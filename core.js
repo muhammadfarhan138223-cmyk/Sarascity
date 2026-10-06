@@ -13,7 +13,7 @@ let sd=7;const R=()=>{sd|=0;sd=sd+0x6D2B79F5|0;let t=Math.imul(sd^sd>>>15,1|sd);
 const rr=(a,b)=>a+R()*(b-a);
 
 /* ───────── settings ───────── */
-const DEF={keys:{groq:'',gemini:'',openrouter:''},models:{groq:'llama-3.3-70b-versatile',gemini:'gemini-2.5-flash',openrouter:'meta-llama/llama-3.3-70b-instruct:free'},rec:'hi-IN',mic:true,tts:true,quality:'high',autoWeather:true};
+const DEF={keys:{groq:'',gemini:'',openrouter:''},models:{groq:'llama-3.3-70b-versatile',gemini:'gemini-2.5-flash',openrouter:'meta-llama/llama-3.3-70b-instruct:free'},rec:'hi-IN',mic:true,tts:true,quality:'high',autoWeather:true,always:true,wake:false,chatty:true};
 let S=JSON.parse(JSON.stringify(DEF));
 try{const s=JSON.parse(localStorage.getItem('saras_settings')||'{}');S=Object.assign(S,s);S.keys=Object.assign({},DEF.keys,s.keys||{});S.models=Object.assign({},DEF.models,s.models||{});}catch(e){}
 G.S=S;G.saveS=()=>{try{localStorage.setItem('saras_settings',JSON.stringify(S));}catch(e){}};
@@ -36,14 +36,14 @@ const skyU={top:{value:new T.Color('#2e7ed6')},bot:{value:new T.Color('#cfe8fb')
 const sky=new T.Mesh(new T.SphereGeometry(1000,24,12),new T.ShaderMaterial({uniforms:skyU,side:T.BackSide,depthWrite:false,fog:false,
  vertexShader:'varying float h;void main(){h=normalize(position).y;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
  fragmentShader:'uniform vec3 top;uniform vec3 bot;varying float h;void main(){float t=pow(clamp(h,0.0,1.0),0.5);gl_FragColor=vec4(mix(bot,top,t),1.0);}'}));
-sky.frustumCulled=false;scene.add(sky);
+sky.frustumCulled=false;scene.add(sky);G.skyU=skyU;
 const stars=(()=>{const n=500,a=new Float32Array(n*3);for(let i=0;i<n;i++){const u=Math.random()*2*PI,v=Math.random()*.9+.05,r=950;a[i*3]=Math.cos(u)*Math.sqrt(1-v*v)*r;a[i*3+1]=v*r;a[i*3+2]=Math.sin(u)*Math.sqrt(1-v*v)*r;}
  const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(a,3));const p=new T.Points(g,new T.PointsMaterial({color:0xffffff,size:2.2,sizeAttenuation:false,transparent:true,opacity:0,fog:false,depthWrite:false}));p.frustumCulled=false;scene.add(p);return p;})();
 
 const hemi=new T.HemisphereLight(0xffffff,0x445566,.6);scene.add(hemi);
 const sun=new T.DirectionalLight(0xffffff,1.2);sun.castShadow=Q>0;
 sun.shadow.mapSize.set(Q===2?2048:1024,Q===2?2048:1024);const sc=sun.shadow.camera;sc.left=-70;sc.right=70;sc.top=70;sc.bottom=-70;sc.near=1;sc.far=420;sun.shadow.bias=-.0006;
-scene.add(sun,sun.target);
+scene.add(sun,sun.target);G.sunLight=sun;
 const moon=new T.DirectionalLight(0x9db7ff,0);scene.add(moon,moon.target);
 
 /* ───────── helpers ───────── */
@@ -73,6 +73,7 @@ const LM=[
  {id:'home3',name:'Ghar 3',bx:6,bz:6,color:'#4ade80',kind:'house'}];
 LM.forEach(l=>{l.x=blkC(l.bx);l.z=blkC(l.bz);l.stop={x:l.x,z:roadC(l.bz+1)};l.door={x:l.x,z:l.z+9.5};});
 G.landmarks=LM;
+const LMHI={home:'घर',petrol:'पेट्रोल पंप',hospital:'अस्पताल',police:'थाना',bazaar:'बाज़ार',mall:'मॉल',park:'पार्क',stadium:'स्टेडियम',home2:'दूसरा घर',home3:'तीसरा घर'};G.LMHI=LMHI;
 const lmAt=(bx,bz)=>LM.find(l=>l.bx===bx&&l.bz===bz);
 const PARKS=new Set(['4,3','2,2','1,4']);
 
@@ -84,7 +85,7 @@ const bMats=BASES.map(b=>{
    g.fillStyle='rgba(255,255,255,.14)';g.fillRect(x,y,36,5);g.fillStyle='rgba(0,0,0,.25)';g.fillRect(x-2,y+44,40,3);}},true);
  const em=ctex(256,256,g=>{g.fillStyle='#000';g.fillRect(0,0,256,256);for(let i=0;i<4;i++)for(let j=0;j<4;j++)if(R()<.55){g.fillStyle=R()<.8?'#ffd68a':'#bfe3ff';g.fillRect(i*64+14,j*64+10,36,44);}},true);
  return new T.MeshStandardMaterial({map,emissiveMap:em,emissive:0xffffff,emissiveIntensity:0,roughness:.88,metalness:.05});});
-const roofM=new T.MeshStandardMaterial({color:'#3a3d42',roughness:1});
+G.bMats=bMats;const roofM=new T.MeshStandardMaterial({color:'#3a3d42',roughness:1});
 const slabM=new T.MeshStandardMaterial({color:'#8e9297',roughness:1}),grassM=new T.MeshStandardMaterial({color:'#3c6b3f',roughness:1});
 const stdM=(c,r)=>new T.MeshStandardMaterial({color:c,roughness:r==null?.9:r});
 
@@ -97,7 +98,7 @@ function bldg(x,z,w,d,h,k){const g=new T.BoxGeometry(w,h,d),uv=g.attributes.uv;
 const treeSpots=[];
 
 /* ground, roads */
-const ground=new T.Mesh(new T.PlaneGeometry(3200,3200).rotateX(-PI/2),stdM('#46503f',1));ground.receiveShadow=true;cityGroup.add(ground);
+const ground=new T.Mesh(new T.PlaneGeometry(3200,3200).rotateX(-PI/2),stdM('#46503f',1));ground.receiveShadow=true;cityGroup.add(ground);G.ground=ground;
 const asph=(vert)=>ctex(128,128,g=>{g.fillStyle='#34373b';g.fillRect(0,0,128,128);for(let n=0;n<900;n++){const v=40+Math.random()*30|0;g.fillStyle=`rgba(${v},${v},${v},.35)`;g.fillRect(Math.random()*128,Math.random()*128,2,2);}
  if(vert===null)return;g.fillStyle='#ece9e0';
  if(vert){g.fillRect(62,0,4,64);g.fillRect(4,0,2,128);g.fillRect(122,0,2,128);}else{g.fillRect(0,62,64,4);g.fillRect(0,4,128,2);g.fillRect(0,122,128,2);}},true);
@@ -219,7 +220,7 @@ function collideCar(c){let hs=0;const fx=Math.sin(c.h),fz=Math.cos(c.h);
  for(const o of[1.3,-1.3]){const res=resolve(c.x+fx*o,c.z+fz*o,1.05);if(!res.hit)continue;c.x+=res.x-(c.x+fx*o);c.z+=res.z-(c.z+fz*o);
   const vn=c.vx*res.nx+c.vz*res.nz;if(vn<0){c.vx-=1.3*vn*res.nx;c.vz-=1.3*vn*res.nz;hs=Math.max(hs,-vn);}}
  c.x=clamp(c.x,-60,SIZE+60);c.z=clamp(c.z,-60,SIZE+60);
- if(hs>3.5){c.hp=Math.max(0,c.hp-(hs-3)*2.4);if(c===car){camState.shake=Math.min(1.2,hs*.08);burst(500,.35,Math.min(.5,hs*.04));}if(G.onCrash)G.onCrash(c,hs);}
+ if(hs>3.5){c.hp=Math.max(0,c.hp-(hs-3)*2.4);if(c===car){camState.shake=Math.min(1.2,hs*.08);burst(500,.35,Math.min(.5,hs*.04));if(hs>7)G.event('crash');}if(G.onCrash)G.onCrash(c,hs);}
  return hs;}
 G.stepCar=function(c,inp,dt){const wet=W.wet,hb=!!inp.hb,maxV=(c.maxV||42)*(c.hp<35?.75:1),acc=c.acc||1;
  const tg=clamp(inp.steer||0,-1,1);c.steer+=(tg-c.steer)*Math.min(1,dt*(tg===0?6:9));
@@ -324,7 +325,7 @@ A.goto=a=>{const lm=LM.find(l=>l.id===a.place||(a.place&&l.name.toLowerCase()===
  const mk={id:'ap_dest',x:dest.x,z:dest.z,color:'#ffd23f',label:name};G.markers.push(mk);const clean=()=>{const i=G.markers.indexOf(mk);if(i>=0)G.markers.splice(i,1);};
  return{name:'goto '+name,ctl(){const dist=Math.hypot(dest.x-car.x,dest.z-car.z);while(idx<pts.length-1&&Math.hypot(pts[idx].x-car.x,pts[idx].z-car.z)<6+car.vf*.3)idx++;
    const p=pts[idx],err=wrapA(Math.atan2(p.x-car.x,p.z-car.z)-car.h);let v=kmh;if(Math.abs(err)>.4)v=Math.min(v,22);v=Math.min(v,Math.max(0,(dist-4)*3));return{steer:clamp(2.4*err,-1,1),kmh:v};},
-  update(){const dist=Math.hypot(dest.x-car.x,dest.z-car.z);if(dist<9&&Math.abs(car.vf)<1.5||dist<5){AP.cruise=0;clean();return true;}return false;},cancel:clean};};
+  update(){const dist=Math.hypot(dest.x-car.x,dest.z-car.z);if(dist<9&&Math.abs(car.vf)<1.5||dist<5){AP.cruise=0;clean();G.event('arrive',{name,hi:lm?LMHI[lm.id]:'यहाँ'},true);return true;}return false;},cancel:clean};};
 A.honk=instant(()=>honk(),'honk');
 A.lights=instant(a=>{G.carLights=a.on===false?false:true;},'lights');
 A.weather=instant(a=>{if(!G.setWeather(a.type,300))toast('Mausam samajh nahi aaya');},'weather');
@@ -429,18 +430,24 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 G.say=say;
 let voices=[];const loadV=()=>{try{voices=speechSynthesis.getVoices();}catch(e){}};if('speechSynthesis'in window){loadV();speechSynthesis.onvoiceschanged=loadV;}
 function tts(text,lang){if(!('speechSynthesis'in window))return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang=lang;
- const base=lang.slice(0,2),c=voices.filter(v=>v.lang.toLowerCase().startsWith(base));const v=c.find(x=>/female|zira|heera|neerja|swara|google/i.test(x.name))||c[0];if(v)u.voice=v;u.rate=.98;u.pitch=1.1;speechSynthesis.speak(u);}catch(e){}}
-let rec=null,listening=false;const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-function applyMicUI(){document.body.classList.toggle('nomic',!S.mic);if(!S.mic&&listening&&rec){try{rec.stop();}catch(e){}}}
-function toggleMic(){initAudio();if(!S.mic){toast('Mic band hai (Settings mein on karo)');return;}if(!SR){toast('Is browser mein voice nahi — Chrome use karo, ya type karo');return;}
- if(listening){try{rec.stop();}catch(e){}return;}
- try{speechSynthesis.cancel();}catch(e){}
- rec=new SR();rec.lang=S.rec;rec.interimResults=true;rec.continuous=false;rec.maxAlternatives=1;let finalT='';
- rec.onstart=()=>{listening=true;$('mic').classList.add('on');};
- rec.onresult=e=>{let t='';for(let i=e.resultIndex;i<e.results.length;i++){t+=e.results[i][0].transcript;if(e.results[i].isFinal)finalT=t;}say('',null,null,t);};
- rec.onerror=e=>{if(e.error==='not-allowed')toast('Mic ki ijazat do (browser settings)');else if(e.error!=='no-speech'&&e.error!=='aborted')toast('Mic error: '+e.error);};
- rec.onend=()=>{listening=false;$('mic').classList.remove('on');if(finalT)handle(finalT);};
- try{rec.start();}catch(e){}}
+ const base=lang.slice(0,2),c=voices.filter(v=>v.lang.toLowerCase().startsWith(base));const v=c.find(x=>/female|zira|heera|neerja|swara|google/i.test(x.name))||c[0];if(v)u.voice=v;u.rate=.98;u.pitch=1.1;u.onstart=()=>{ttsBusy=true;ttsT=performance.now();stopRec();};const done=()=>{ttsBusy=false;if(wantListen)setTimeout(startRec,450);};u.onend=done;u.onerror=done;speechSynthesis.speak(u);}catch(e){ttsBusy=false;}}
+let ttsBusy=false,ttsT=0;
+let rec=null,listening=false,wantListen=false,pendingText='';const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+function applyMicUI(){document.body.classList.toggle('nomic',!S.mic);if(!S.mic)setListen(false);}
+function startRec(){if(!SR||!S.mic||!wantListen||rec||ttsBusy)return;const r=new SR();rec=r;r.lang=S.rec;r.interimResults=true;r.continuous=true;r.maxAlternatives=1;
+ r.onstart=()=>{listening=true;$('mic').classList.add('on');};
+ r.onresult=e=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const x=e.results[i];if(x.isFinal)heard(x[0].transcript);else interim+=x[0].transcript;}if(interim&&!ttsBusy)say('',null,null,interim);};
+ r.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){wantListen=false;toast('Mic ki ijazat do (browser settings)',2800);}};
+ r.onend=()=>{listening=false;if(rec===r)rec=null;if(!wantListen)$('mic').classList.remove('on');if(wantListen&&S.mic&&!ttsBusy)setTimeout(startRec,400);};
+ try{r.start();}catch(e){rec=null;}}
+function stopRec(){const r=rec;if(r){try{r.stop();}catch(e){}}}
+function setListen(on){wantListen=!!on&&S.mic&&!!SR;$('mic').classList.toggle('on',wantListen);if(wantListen)startRec();else stopRec();}
+function toggleMic(){initAudio();if(!SR){toast('Is browser mein voice nahi — Chrome use karo, ya type karo',2600);return;}if(!S.mic){toast('Mic band hai (Settings mein on karo)');return;}setListen(!wantListen);toast(wantListen?'🎤 Mic hamesha on':'Mic pause',1200);}
+function heard(t){t=(t||'').trim();if(!t)return;
+ if(S.wake){const m=t.match(/\b(saras|sarus|sarah|sara)\b|सरस|سرس/i);if(!m)return;t=t.replace(m[0],'').trim()||'haan';}
+ if(busyThink){pendingText=t;return;}handle(t);}
+G.setListen=setListen;
+if(typeof document.addEventListener==='function')document.addEventListener('visibilitychange',()=>{if(document.hidden)stopRec();else if(wantListen)startRec();});
 
 /* ───────── LLM brain ───────── */
 const hist=[];let busyThink=false;
@@ -456,7 +463,7 @@ function buildSystem(){return `You are Saras, the polite, warm, slightly witty i
 
 Reply with ONLY valid JSON (no markdown):
 {"say":"...","speak":"...","speak_lang":"en-US or hi-IN","actions":[ ... ]}
-- say: 1-2 SHORT polite sentences shown as subtitle, in the player's language (Roman Urdu if they wrote Roman Urdu / Hindi-Urdu speech, English if English).
+- say: 2-3 friendly, CHATTY sentences (max ~45 words) shown as subtitle: acknowledge what you are doing, then add a small observation, tip or light joke about the city / weather / drive, and now and then end with a short follow-up question. Stay polite and warm. Use the player's language (Roman Urdu if they wrote Roman Urdu / Hindi-Urdu speech, English if English).
 - speak: the same sentence for text-to-speech. English reply -> English text, speak_lang "en-US". Urdu/Hindi reply -> write it in Devanagari script so a Hindi voice pronounces it well, speak_lang "hi-IN".
 - actions: executed IN ORDER. Use [] when only chatting or when you need no game action.
 
@@ -492,7 +499,7 @@ async function think(text,opt){opt=opt||{};const sys=buildSystem(),user=`STATE: 
 async function handle(text){text=(text||'').trim();if(!text||busyThink)return;busyThink=true;G.userLang=isEn(text)?'en':'ur';say('',null,null,text);$('think').classList.add('on');
  let plan=null;try{plan=await think(text);}catch(e){}
  $('think').classList.remove('on');if(!plan){plan=offline(text);lastSrc='offline';}
- busyThink=false;runPlan(plan);}
+ busyThink=false;CH.idle=0;runPlan(plan);if(pendingText){const t=pendingText;pendingText='';setTimeout(()=>handle(t),60);}}
 G.handle=handle;
 
 /* look: vision via Gemini, else text brain, else state */
@@ -533,7 +540,43 @@ function seg(s){const a=[],has=r=>r.test(s);
 function offline(text){const t=text.toLowerCase(),en=isEn(text),acts=[];
  for(const p of t.split(/\bthen\b|\bphir\b|\bfir\b|\baur\b|\band\b|[,;।]|फिर|और|پھر|اور/))acts.push(...seg(p));
  if(!acts.length)return en?{say:'Sorry, I did not get that. Add an AI key in Settings so I can understand freely.',speak:'Sorry, I did not get that.',speak_lang:'en-US',actions:[]}:{say:'Maaf kijiye, samajh nahi aaya. Settings mein AI key daalein to main khul kar samjhungi.',speak:'माफ़ कीजिए, समझ नहीं आया।',speak_lang:'hi-IN',actions:[]};
- return en?{say:'Sure, on it!',speak:'Sure, on it!',speak_lang:'en-US',actions:acts}:{say:'Ji, abhi karti hoon!',speak:'जी, अभी करती हूँ!',speak_lang:'hi-IN',actions:acts};}
+ {const k=Math.floor(Math.random()*3);return en?{say:['Sure, on it!','Of course, let us go!','Alright, here we go!'][k],speak:['Sure, on it!','Of course, let us go!','Alright, here we go!'][k],speak_lang:'en-US',actions:acts}:{say:['Ji, abhi karti hoon!','Zaroor, chalte hain!','Theek hai, dekhte hain!'][k],speak:['जी, अभी करती हूँ!','ज़रूर, चलते हैं!','ठीक है, देखते हैं!'][k],speak_lang:'hi-IN',actions:acts};}}
+
+/* ───────── Saras ki baatein (ambient chatter) ───────── */
+const CH={last:0,idle:0,seen:{},prevW:'clear',prevN:false,fast:0,lowhp:false,warm:12};
+const L={
+ rain:{ur:[['Lagta hai barish shuru ho gayi. Gaari aahista chalana, sadak phisalan wali hogi!','लगता है बारिश शुरू हो गई। गाड़ी आहिस्ता चलाना, सड़क फिसलन वाली होगी!'],['Wah, barish! Mujhe ye mausam bahut pasand hai, bas dhyan se chalana.','वाह, बारिश! मुझे ये मौसम बहुत पसंद है, बस ध्यान से चलाना।']],en:[['Looks like it started raining. Take it easy, the road will be slippery!'],['Rain! I love this weather, just drive carefully.']]},
+ storm:{ur:[['Wah, toofan aa gaya! Bijli chamak rahi hai, zara ehtiyaat se chalana.','वाह, तूफ़ान आ गया! बिजली चमक रही है, ज़रा एहतियात से चलाना।']],en:[['Wow, a storm! Lightning everywhere, be careful out there.']]},
+ fog:{ur:[['Dhund chha gayi hai. Samne kam dikh raha hai, gaari dheere karo.','धुंध छा गई है। सामने कम दिख रहा है, गाड़ी धीरे करो।']],en:[['It is getting foggy. Visibility is low, slow down a little.']]},
+ clear:{ur:[['Mausam saaf ho gaya, kitni achi dhoop hai!','मौसम साफ़ हो गया, कितनी अच्छी धूप है!']],en:[['The sky has cleared up, lovely weather!']]},
+ cloudy:{ur:[['Badal chha gaye hain, thandi hawa chal rahi hogi.','बादल छा गए हैं, ठंडी हवा चल रही होगी।']],en:[['Clouds are rolling in, nice and cool.']]},
+ night:{ur:[['Raat ho gayi hai, maine headlights on kar di hain. Shehar ki batti kitni khoobsurat lag rahi hai!','रात हो गई है, मैंने हेडलाइट्स ऑन कर दी हैं। शहर की बत्तियाँ कितनी ख़ूबसूरत लग रही हैं!']],en:[['Night has fallen and the headlights are on. The city lights look beautiful!']]},
+ morning:{ur:[['Subah ho gayi! Kitna sukoon bhara din hai, kahan chalna hai?','सुबह हो गई! कितना सुकून भरा दिन है, कहाँ चलना है?']],en:[['Good morning! What a calm day, where to?']]},
+ fast:{ur:[['Itni tez? Seat belt bandh lo, mere dost!','इतनी तेज़? सीट बेल्ट बाँध लो, मेरे दोस्त!']],en:[['That is fast! Hold on tight, friend!']]},
+ crash:{ur:[['Oh no! Gaari ko theek se sambhalo, warna repair mehngi padegi.','ओह नो! गाड़ी को ठीक से संभालो, वरना रिपेयर महंगी पड़ेगी।']],en:[['Ouch! Careful, repairs get expensive.']]},
+ arrive:{ur:[['Hum {name} pahunch gaye! Ab aage kya karna hai?','हम {hi} पहुँच गए! अब आगे क्या करना है?']],en:[['We have arrived at {name}! What next?']]},
+ near:{ur:[['Dekhiye, yahan {name} hai. Chalna ho to bataiye.','देखिए, यहाँ {hi} है। चलना हो तो बताइए।']],en:[['Look, {name} is right here. Tell me if you want to stop by.']]},
+ lowhp:{ur:[['Gaari ki halat kharab ho rahi hai. Petrol Pump par jaa kar repair karwa lein.','गाड़ी की हालत ख़राब हो रही है। पेट्रोल पंप पर जाकर रिपेयर करवा लें।']],en:[['The car is badly damaged. Let us repair it at the Petrol Pump.']]},
+ idle:{ur:[['Shehar kitna khoobsurat hai na? Mujhe aapke saath ghoomna acha lag raha hai.','शहर कितना ख़ूबसूरत है ना? मुझे आपके साथ घूमना अच्छा लग रहा है।'],['Koi mission shuru karein, ya bas aise hi ghoomte hain?','कोई मिशन शुरू करें, या बस ऐसे ही घूमते हैं?'],['Agar kuch chahiye ho to bas boliye, main yahin hoon.','अगर कुछ चाहिए हो तो बस बोलिए, मैं यहीं हूँ।']],en:[['Isn\'t the city beautiful? I enjoy cruising with you.'],['Shall we start a mission, or just wander around?'],['If you need anything, just say so, I am right here.']]},
+ mission_pass:{ur:[['Shabaash! Mission poora ho gaya. Aap kamaal ho!','शाबाश! मिशन पूरा हो गया। आप कमाल हो!']],en:[['Well done! Mission complete. You are amazing!']]},
+ mission_fail:{ur:[['Koi baat nahi, dobara koshish karte hain. Is baar pakka ho jayega!','कोई बात नहीं, दोबारा कोशिश करते हैं। इस बार पक्का हो जाएगा!']],en:[['No worries, let us try again. We will nail it this time!']]},
+ wanted:{ur:[['Oh no, police peechay lag gayi! Tez chalo ya kahin chhup jao!','ओह नो, पुलिस पीछे लग गई! तेज़ चलो या कहीं छुप जाओ!']],en:[['Oh no, the police are after us! Drive fast or hide somewhere!']]},
+ lose_cops:{ur:[['Wah! Police se bach gaye. Pheww!','वाह! पुलिस से बच गए। फ़ुस्स!']],en:[['Yes! We lost the police. Phew!']]},
+ busted:{ur:[['Police ne pakad liya... jurmana dena pada. Agli baar ehtiyaat!','पुलिस ने पकड़ लिया... जुर्माना देना पड़ा। अगली बार एहतियात!']],en:[['Busted... we had to pay a fine. More careful next time!']]},
+ wasted:{ur:[['Aap behosh ho gaye the. Hospital mein hain, ab theek hain.','आप बेहोश हो गए थे। अस्पताल में हैं, अब ठीक हैं।']],en:[['You passed out. We are at the hospital, all fine now.']]},
+ sleep:{ur:[['Subah ho gayi. Aaram se so liye, ab taazadam hain!','सुबह हो गई। आराम से सो लिए, अब ताज़ादम हैं!']],en:[['Good morning! Rested and ready.']]}};
+G.event=function(key,d,imp){if(!G.started)return;if(!imp&&(!S.chatty||ttsBusy))return;const now=performance.now()/1000;if(!imp&&now-CH.last<14)return;
+ const set=L[key];if(!set)return;const en=G.userLang==='en',arr=en?set.en:set.ur;if(!arr)return;const pk=arr[Math.floor(Math.random()*arr.length)];
+ let s=pk[0],sp=pk[1]||pk[0];if(d){const nm=d.name||'',hi=d.hi||nm;s=s.replace('{name}',nm);sp=sp.replace('{name}',nm).replace('{hi}',hi);}
+ CH.last=now;CH.idle=0;say(s,sp,en?'en-US':'hi-IN');};
+function chatUpdate(dt){if(!G.started)return;if(ttsBusy&&performance.now()-ttsT>25000){ttsBusy=false;if(wantListen)startRec();}
+ CH.warm-=dt;CH.idle+=dt;const mi=G.lastInp;if(mi&&G.mode==='car'&&(Math.abs(mi.thr)>.1||Math.abs(mi.steer)>.1)&&!AP.cur)CH.idle=Math.max(0,CH.idle-dt*.7);if(CH.warm>0)return;
+ if(W.type!==CH.prevW){CH.prevW=W.type;if(L[W.type])G.event(W.type);}
+ const n=G.night>.6;if(n!==CH.prevN){CH.prevN=n;G.event(n?'night':'morning');}
+ const kmh=Math.abs(car.vf)*3.6;if(G.mode==='car'&&kmh>115){CH.fast+=dt;if(CH.fast>2){CH.fast=-40;G.event('fast');}}else if(CH.fast>0)CH.fast=0;
+ if(!CH.lowhp&&car.hp<30&&car.hp>0){CH.lowhp=true;G.event('lowhp');}if(car.hp>60)CH.lowhp=false;
+ if(!G.indoor&&G.mode==='car'){const f=G.focusPos(),now=performance.now()/1000;for(const l of LM){if(l.id==='home2'||l.id==='home3')continue;if(Math.hypot(f.x-l.x,f.z-l.z)<45&&(!CH.seen[l.id]||now-CH.seen[l.id]>240)){CH.seen[l.id]=now;G.event('near',{name:l.name,hi:LMHI[l.id]});break;}}}
+ if(CH.idle>55){CH.idle=0;G.event('idle');}}
 
 /* ───────── main update ───────── */
 function carStep(dt){const man=manualInp();let inp;
@@ -549,10 +592,10 @@ function update(dt){
  if(S.autoWeather){weatherHold-=dt;autoWT-=dt;if(autoWT<=0&&weatherHold<=0){autoWT=rnd(160,320);const r=Math.random(),ty=r<.45?'clear':r<.62?'cloudy':r<.8?'rain':r<.9?'fog':'storm';W.type=ty;WTarget=WT[ty];}}
  for(const h of G.hooks.update)h(dt);
  if(G.mode==='car')carStep(dt);else{G.syncCarMesh(car,dt);if(G.footAP)G.footAP(dt);}
- applyCam(dt);skyUpdate(dt);rainUpdate(dt);hud(dt);if(G.uiOn)drawMini();
+ applyCam(dt);skyUpdate(dt);rainUpdate(dt);hud(dt);chatUpdate(dt);if(G.uiOn)drawMini();
  cityGroup.visible=!G.indoor;beaconGroup.visible=!G.indoor;sky.visible=!G.indoor;scene.background=G.indoor?new T.Color('#14110e'):null;}
 let last=performance.now();
-function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last)/1000);last=now;try{update(dt);}catch(e){console.error(e);}
+function frame(now){requestAnimationFrame(frame);const dt=Math.max(0,Math.min(.05,(now-last)/1000));last=now;try{update(dt);}catch(e){console.error(e);}
  renderer.render(scene,camera);
  if(G.shotReq){try{const c=document.createElement('canvas');c.width=512;c.height=Math.round(512*canvas.height/canvas.width)||288;c.getContext('2d').drawImage(canvas,0,0,c.width,c.height);const r=G.shotReq;G.shotReq=null;r(c.toDataURL('image/jpeg',.6));}catch(e){const r=G.shotReq;G.shotReq=null;r&&r(null);}}}
 
@@ -569,10 +612,10 @@ G.boot=function(){
  const tb=$('typebar');$('bType').addEventListener('click',()=>{tb.classList.toggle('on');if(tb.classList.contains('on'))$('txt').focus();});
  const send=()=>{const v=$('txt').value.trim();if(v){$('txt').value='';handle(v);}};$('bSend').addEventListener('click',send);$('txt').addEventListener('keydown',e=>{if(e.key==='Enter')send();e.stopPropagation();});
  const st=$('settings');$('bSet').addEventListener('click',()=>{$('kGroq').value=S.keys.groq;$('kGem').value=S.keys.gemini;$('kOr').value=S.keys.openrouter;$('mGroq').value=S.models.groq;$('mGem').value=S.models.gemini;$('mOr').value=S.models.openrouter;
-  $('sRec').value=S.rec;$('cMic').checked=S.mic;$('cTts').checked=S.tts;$('sQ').value=S.quality;$('cAuto').checked=S.autoWeather;st.classList.add('on');});
+  $('sRec').value=S.rec;$('cMic').checked=S.mic;$('cTts').checked=S.tts;$('sQ').value=S.quality;$('cAuto').checked=S.autoWeather;$('cAlways').checked=S.always;$('cWake').checked=S.wake;$('cChat').checked=S.chatty;st.classList.add('on');});
  $('bCancel').addEventListener('click',()=>st.classList.remove('on'));
  $('bSave').addEventListener('click',()=>{S.keys={groq:$('kGroq').value.trim(),gemini:$('kGem').value.trim(),openrouter:$('kOr').value.trim()};S.models={groq:$('mGroq').value.trim()||DEF.models.groq,gemini:$('mGem').value.trim()||DEF.models.gemini,openrouter:$('mOr').value.trim()||DEF.models.openrouter};
-  const q0=S.quality;S.rec=$('sRec').value;S.mic=$('cMic').checked;S.tts=$('cTts').checked;S.quality=$('sQ').value;S.autoWeather=$('cAuto').checked;G.saveS();applyMicUI();st.classList.remove('on');
+  const q0=S.quality;S.rec=$('sRec').value;S.mic=$('cMic').checked;S.tts=$('cTts').checked;S.quality=$('sQ').value;S.autoWeather=$('cAuto').checked;S.always=$('cAlways').checked;S.wake=$('cWake').checked;S.chatty=$('cChat').checked;G.saveS();applyMicUI();if(S.mic&&S.always&&G.started)setListen(true);else if(!S.always)setListen(false);st.classList.remove('on');
   if(q0!==S.quality){toast('Graphics change ke liye page reload karo',2600);}else toast('Settings save ho gayi');});
  $('bWipe').addEventListener('click',()=>{if(confirm('Game save reset karein? (API keys rehengi)')){try{localStorage.removeItem('saras_save');}catch(e){}location.reload();}});
  window.addEventListener('keydown',e=>{if(e.target&&e.target.tagName==='INPUT')return;const k=e.key.toLowerCase();keys[k]=true;
@@ -581,7 +624,7 @@ G.boot=function(){
  window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
  applyMicUI();
  $('bGo').addEventListener('click',()=>{$('start').classList.remove('on');G.started=true;initAudio();try{speechSynthesis.cancel();}catch(e){}
-  const ur=G.userLang!=='en';say('Salam! Main Saras hoon. Bataiye, kahan chalna hai?','सलाम! मैं सरस हूँ। बताइए, कहाँ चलना है?','hi-IN');
+  CH.seen.home=performance.now()/1000;if(S.always&&S.mic&&SR)setListen(true);const ur=G.userLang!=='en';say('Salam! Main Saras hoon. Bataiye, kahan chalna hai?','सलाम! मैं सरस हूँ। बताइए, कहाँ चलना है?','hi-IN');
   if(!S.keys.groq&&!S.keys.gemini&&!S.keys.openrouter)setTimeout(()=>toast('⚙ Settings mein API key daalo to Saras khul kar samjhegi',3200),2500);});
  $('start').classList.add('on');
  for(const h of G.hooks.ready){try{h();}catch(e){console.error(e);}}
