@@ -1,0 +1,7 @@
+{
+  "sedan":  { "file": "car_sedan.glb",  "len": 4.5, "flip": false },
+  "sports": { "file": "car_sports.glb", "len": 4.5, "flip": false },
+  "suv":    { "file": "car_suv.glb",    "len": 4.8, "flip": false },
+  "hatch":  { "file": "car_hatch.glb",  "len": 3.9, "flip": false },
+  "person": { "file": "person.glb",     "height": 1.8, "rot": 0 }
+}
