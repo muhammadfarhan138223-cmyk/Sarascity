@@ -165,6 +165,9 @@ body.clear #restore{display:block}
     </select>
     <div class="chk"><input type="checkbox" id="cMic"><label for="cMic" style="margin:0;color:var(--ink);font-size:15px">Mic (voice commands) on</label></div>
     <div class="chk"><input type="checkbox" id="cTts"><label for="cTts" style="margin:0;color:var(--ink);font-size:15px">Saras bol kar jawab de</label></div>
+    <div class="chk"><input type="checkbox" id="cAlways"><label for="cAlways" style="margin:0;color:var(--ink);font-size:15px">Mic hamesha on (bina button dabaye sune)</label></div>
+    <div class="chk"><input type="checkbox" id="cWake"><label for="cWake" style="margin:0;color:var(--ink);font-size:15px">Sirf tab sune jab "Saras" bola jaye</label></div>
+    <div class="chk"><input type="checkbox" id="cChat"><label for="cChat" style="margin:0;color:var(--ink);font-size:15px">Saras zyada baat kare (commentary)</label></div>
     <h3>Game</h3>
     <label>Graphics</label>
     <select id="sQ"><option value="high">High</option><option value="med">Medium</option><option value="low">Low (phone slow ho to)</option></select>
@@ -190,9 +193,11 @@ body.clear #restore{display:block}
 <div id="loadmsg">Loading 3D engine…</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="core.js"></script>
 <script src="stage2.js" onerror="void 0"></script>
 <script src="stage3.js" onerror="void 0"></script>
+<script src="stage4.js" onerror="void 0"></script>
 <script>
   if(window.G&&G.boot){G.boot();}else{document.getElementById('loadmsg').textContent='core.js ya three.js load nahi hua — internet aur file names check karo.';}
 </script>
