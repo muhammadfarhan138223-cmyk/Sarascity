@@ -21,10 +21,10 @@ G.hurtMe=hurtMe;
 const WD={stars:0,lost:0,bust:0,spawnT:2,sirenT:0,flashT:0,busting:false},cops=[],copGroup=new T.Group();scene.add(copGroup);
 function setWanted(n){n=clamp(Math.round(n),0,5);if(n>WD.stars)WD.lost=0;WD.stars=n;G.statHud();}
 G.setWanted=setWanted;G.wanted=()=>WD.stars;
-G.crime=lv=>{if(G.indoor)return;if(lv>WD.stars){setWanted(lv);G.toast('Wanted: '+'★'.repeat(WD.stars),1800);}else WD.lost=0;};
+G.crime=lv=>{if(G.indoor)return;if(lv>WD.stars){const was=WD.stars;setWanted(lv);G.toast('Wanted: '+'★'.repeat(WD.stars),1800);if(!was)G.event('wanted',null,true);}else WD.lost=0;};
 G.statExtra=()=>(WD.stars?' · <b style="color:#ff6b5e">'+'★'.repeat(WD.stars)+'</b>':'')+(weapon==='pistol'?' · 🔫<b>'+SV.ammo+'</b>':'');
 G.onPedHit=()=>G.crime(1);
-G.onCrash=(c,hs)=>{if(c!==car||hs<5)return;for(const n of G.npcs)if(Math.hypot(n.x-car.x,n.z-car.z)<4.4){G.crime(1);break;}};
+G.onCrash=(c,hs)=>{if(c!==car||hs<5||!G.lastInp||Math.abs(G.lastInp.thr)<.2)return;for(const n of G.npcs)if(Math.hypot(n.x-car.x,n.z-car.z)<4.4){G.crime(1);break;}};
 G.extraBlock=(n,chk)=>{for(const c of cops)if(chk(c.x,c.z))return true;return false;};
 
 function clearLine(x0,z0,x1,z1){const d=Math.hypot(x1-x0,z1-z0),n=Math.ceil(d/3);for(let k=1;k<n;k++){const px=x0+(x1-x0)*k/n,pz=z0+(z1-z0)*k/n;for(const b of G.colliders)if(px>b.x0&&px<b.x1&&pz>b.z0&&pz<b.z1)return false;}return true;}
@@ -36,8 +36,8 @@ function driveAI(c,pts,vmax,cv,dt){let inp=pursueInp(c,pts,vmax,cv);
 
 function spawnCop(){const c=G.buildCar('#14181f',{shape:'sedan',lights:false}),m1=new T.MeshBasicMaterial({color:'#ff2020'}),m2=new T.MeshBasicMaterial({color:'#2060ff'});
  const b1=new T.Mesh(new T.BoxGeometry(.5,.14,.3),m1),b2=new T.Mesh(new T.BoxGeometry(.5,.14,.3),m2);b1.position.set(-.3,1.62,-.1);b2.position.set(.3,1.62,-.1);c.body.add(b1,b2);
- const st=new T.Mesh(new T.BoxGeometry(1.95,.18,1.2),new T.MeshPhongMaterial({color:'#f0f0f0'}));st.position.set(0,.65,0);c.body.add(st);
- c.cop=true;c.bm=[m1,m2];c.maxV=33+WD.stars*1.6;c.acc=1.1;c.hp=120;c.idx=0;c.pts=[];c.rt=0;c.stuck=0;c.rev=0;c.hitT=0;c.away=0;
+ if(!c.mesh.userData.hasModel){const st=new T.Mesh(new T.BoxGeometry(1.95,.18,1.2),new T.MeshPhongMaterial({color:'#f0f0f0'}));st.position.set(0,.65,0);c.body.add(st);}
+ c.cop=true;c.bm=[m1,m2];c.maxV=33+WD.stars*1.6;c.acc=1.1;c.hp=120;c.idx=0;c.pts=[];c.rt=0;c.stuck=0;c.rev=0;c.hitT=0;c.hitT2=0;c.away=0;
  let tries=0,i,j;const f=G.focusPos();do{i=Math.floor(rnd(0,8));j=Math.floor(rnd(0,8));tries++;}while((Math.hypot(roadC(i)-f.x,roadC(j)-f.z)<110||Math.hypot(roadC(i)-f.x,roadC(j)-f.z)>240)&&tries<80);
  c.x=roadC(i)+3.8;c.z=roadC(j)+3.8;c.h=0;c.steer=0;c.vx=c.vz=c.vf=c.vl=0;copGroup.add(c.mesh);c.mk={id:'cop',x:c.x,z:c.z,color:'#3b82f6'};G.markers.push(c.mk);cops.push(c);}
 function removeCop(c){copGroup.remove(c.mesh);const i=cops.indexOf(c);if(i>=0)cops.splice(i,1);const k=G.markers.indexOf(c.mk);if(k>=0)G.markers.splice(k,1);}
@@ -46,20 +46,21 @@ function copStep(c,dt){const onCar=G.mode==='car',tgt=onCar?car:me,d=Math.hypot(
  if(c.rt<=0){c.rt=1.8;c.pts=G.route(c.x,c.z,c.h,tgt.x,tgt.z,0).pts;c.idx=0;}
  let pts=c.pts;if(d<45&&clearLine(c.x,c.z,tgt.x,tgt.z))pts=[{x:tgt.x,z:tgt.z}];
  const old=c.idx;if(pts!==c.pts)c.idx=0;
- const near=d<12,vmax=near&&onCar&&Math.abs(car.vf)<8?Math.max(6,Math.abs(car.vf)+4):c.maxV;
+ const near=d<12,vmax=(onCar&&Math.abs(car.vf)<5&&d<6.5)?0:(near&&onCar&&Math.abs(car.vf)<8?Math.max(6,Math.abs(car.vf)+4):c.maxV);
  driveAI(c,pts,vmax,10,dt);if(pts!==c.pts)c.idx=old;
  /* ram the player's car */
  const dx=car.x-c.x,dz=car.z-c.z,dd=Math.hypot(dx,dz);
- if(dd<3.6&&dd>.01){const nx=dx/dd,nz=dz/dd,ov=3.6-dd;car.x+=nx*ov*.55;car.z+=nz*ov*.55;c.x-=nx*ov*.45;c.z-=nz*ov*.45;const rel=(car.vx-c.vx)*nx+(car.vz-c.vz)*nz;
-  if(rel<-2){const imp=-rel;car.vx+=nx*imp*.5;car.vz+=nz*imp*.5;c.vx-=nx*imp*.5;c.vz-=nz*imp*.5;car.hp=Math.max(0,car.hp-imp*.8);c.hp-=imp*.9;G.camState.shake=Math.min(1,imp*.08);G.burst(450,.25,Math.min(.4,imp*.04));}}
+ if(dd<3.6&&dd>.01){const nx=dx/dd,nz=dz/dd,ov=3.6-dd;car.x+=nx*ov*.3;car.z+=nz*ov*.3;c.x-=nx*ov*.7;c.z-=nz*ov*.7;const rel=(car.vx-c.vx)*nx+(car.vz-c.vz)*nz;
+  if(rel<-2.5&&c.hitT2<=0){c.hitT2=.5;const imp=Math.min(-rel,9);car.vx+=nx*imp*.25;car.vz+=nz*imp*.25;c.vx-=nx*imp*.6;c.vz-=nz*imp*.6;car.hp=Math.max(0,car.hp-imp*.7);c.hp-=imp*.9;c.hurtBy=true;G.camState.shake=Math.min(1,imp*.08);G.burst(450,.25,Math.min(.4,imp*.04));}}
+ c.hitT2-=dt;
  if(!onCar&&!G.indoor&&Math.hypot(me.x-c.x,me.z-c.z)<2&&Math.abs(c.vf)>4&&c.hitT<=0){c.hitT=.9;hurtMe(14);}
- if(c.hp<=0){G.crime(Math.min(5,WD.stars+1));G.toast('Police gaari tabah!',1500);removeCop(c);}
+ if(c.hp<=0){if(c.hurtBy)G.crime(Math.min(5,WD.stars+1));G.toast('Police gaari tabah!',1500);removeCop(c);}
  c.mk.x=c.x;c.mk.z=c.z;}
 function busted(){if(WD.busting||dying.v)return;WD.busting=true;const fine=Math.min(SV.money,150+Math.floor(SV.money*.1));
- G.fade(()=>{G.addMoney(-fine);clearCops();setWanted(0);G.cancelAll();if(M.active)G.finishMission(false,'Police ne pakad liya');G.teleportCar('police');WD.busting=false;G.toast('BUSTED! Jurmana $'+fine,3400);},500);}
+ G.fade(()=>{G.addMoney(-fine);clearCops();setWanted(0);G.cancelAll();if(M.active)G.finishMission(false,'Police ne pakad liya');G.teleportCar('police');WD.busting=false;G.toast('BUSTED! Jurmana $'+fine,3400);setTimeout(()=>G.event('busted',null,true),700);},500);}
 function wasted(){if(dying.v)return;dying.v=true;
  G.fade(()=>{const fine=Math.min(SV.money,100+Math.floor(SV.money*.05));G.addMoney(-fine);clearCops();setWanted(0);G.cancelAll();if(M.active)G.finishMission(false,'Saras behosh ho gayi');
-  if(G.indoor)G.exitHome();me.hp=70;G.teleportCar('hospital');dying.v=false;G.toast('WASTED! Hospital ka bill $'+fine,3400);},700);}
+  if(G.indoor)G.exitHome();me.hp=70;G.teleportCar('hospital');dying.v=false;G.toast('WASTED! Hospital ka bill $'+fine,3400);setTimeout(()=>G.event('wasted',null,true),700);},700);}
 function policeLogic(dt){
  if(WD.stars===0){for(const c of cops.slice()){c.away+=dt;const f=G.focusPos();if(c.away>14||Math.hypot(c.x-f.x,c.z-f.z)>170)removeCop(c);else copStep(c,dt);}return;}
  const want=Math.min(6,1+WD.stars);WD.spawnT-=dt;if(!G.indoor&&cops.length<want&&WD.spawnT<=0){spawnCop();WD.spawnT=3.2;}
@@ -67,9 +68,9 @@ function policeLogic(dt){
  for(let a=0;a<cops.length;a++)for(let b=a+1;b<cops.length;b++){const p=cops[a],q=cops[b],dx=q.x-p.x,dz=q.z-p.z,d=Math.hypot(dx,dz);if(d<3.4&&d>.01){const o=(3.4-d)/2;p.x-=dx/d*o;p.z-=dz/d*o;q.x+=dx/d*o;q.z+=dz/d*o;}}
  /* lose the cops */
  const seen=nearest<55&&!G.indoor;WD.lost=seen?Math.max(0,WD.lost-dt):WD.lost+dt*(G.indoor?3:1);
- if(WD.lost>14){WD.lost=0;setWanted(WD.stars-1);G.toast(WD.stars?'Wanted kam hua':'Police se bach gaye! 🎉',1800);}
+ if(WD.lost>14){WD.lost=0;setWanted(WD.stars-1);G.toast(WD.stars?'Wanted kam hua':'Police se bach gaye! 🎉',1800);if(!WD.stars)G.event('lose_cops',null,true);}
  /* arrest */
- const catchD=G.mode==='car'?(Math.abs(car.vf)<3?6.5:0):4.6;WD.bust=(nearest<catchD&&!G.indoor)?WD.bust+dt:Math.max(0,WD.bust-dt*2);if(WD.bust>3){WD.bust=0;busted();}
+ const catchD=G.mode==='car'?(Math.abs(car.vf)<4.5?7:0):4.6;WD.bust=(nearest<catchD&&!G.indoor)?WD.bust+dt:Math.max(0,WD.bust-dt*2);if(WD.bust>3){WD.bust=0;busted();}
  /* siren + flash */
  WD.flashT-=dt;if(WD.flashT<=0){WD.flashT=.22;WD.fl=!WD.fl;for(const c of cops){c.bm[0].color.set(WD.fl?'#ff2020':'#3a0a0a');c.bm[1].color.set(WD.fl?'#0a1a3a':'#2060ff');}}
  WD.sirenT-=dt;if(WD.sirenT<=0&&nearest<130){WD.sirenT=.45;WD.sw=!WD.sw;G.tone(WD.sw?760:960,.4,Math.max(.01,.05-nearest*.0003),'sawtooth');}}
@@ -94,14 +95,14 @@ function attack(){if(G.indoor||G.mode!=='foot'){G.toast('Pehle gaari se utro (�
  if(weapon==='fists'){atkCD=.45;me.atk=.22;let hit=false;
   for(const t of thugs){if(t.dead)continue;const dx=t.x-me.x,dz=t.z-me.z,d=Math.hypot(dx,dz);if(d<2.4&&(dx*fx+dz*fz)/(d||1)>.35){thugHit(t,20+lv*1.5);t.x+=fx*.7;t.z+=fz*.7;hit=true;}}
   for(const p of G.peds){if(p.down>0)continue;const dx=p.x-me.x,dz=p.z-me.z,d=Math.hypot(dx,dz);if(d<2.3&&(dx*fx+dz*fz)/(d||1)>.35){G.knockPed(p);G.crime(1);hit=true;}}
-  for(const c of cops){const dx=c.x-me.x,dz=c.z-me.z;if(Math.hypot(dx,dz)<3){c.hp-=4;G.crime(Math.min(5,WD.stars+1));hit=true;}}
+  for(const c of cops){const dx=c.x-me.x,dz=c.z-me.z;if(Math.hypot(dx,dz)<3){c.hp-=4;c.hurtBy=true;G.crime(Math.min(5,WD.stars+1));hit=true;}}
   G.burst(hit?500:900,.08,hit?.3:.08);return;}
  if(SV.ammo<=0){G.toast('Goliyan khatam — "goliyan kharido" bolo ($100)');return;}
  SV.ammo--;atkCD=.3;me.atk=.15;G.statHud();
  let best=null,ba=.5;const cand=[];for(const t of thugs)if(!t.dead)cand.push({o:t,k:'t'});for(const p of G.peds)if(p.down<=0)cand.push({o:p,k:'p'});for(const c of cops)cand.push({o:c,k:'c'});
  for(const q of cand){const dx=q.o.x-me.x,dz=q.o.z-me.z,d=Math.hypot(dx,dz);if(d>42)continue;const a=Math.abs(wrapA(Math.atan2(dx,dz)-me.h));if(a<ba){ba=a;best=q;}}
  let dist=40;if(best){me.h=Math.atan2(best.o.x-me.x,best.o.z-me.z);dist=Math.hypot(best.o.x-me.x,best.o.z-me.z);
-  if(best.k==='t')thugHit(best.o,28+lv);else if(best.k==='p'){G.knockPed(best.o);G.crime(2);}else{best.o.hp-=30;G.crime(Math.min(5,WD.stars+2));}}
+  if(best.k==='t')thugHit(best.o,28+lv);else if(best.k==='p'){G.knockPed(best.o);G.crime(2);}else{best.o.hp-=30;best.o.hurtBy=true;G.crime(Math.min(5,WD.stars+2));}}
  const ex=Math.sin(me.h),ez=Math.cos(me.h);tracer(me.x+ex*.5,me.z+ez*.5,me.x+ex*dist,me.z+ez*dist);G.tone(190,.12,.1,'sawtooth',60);G.burst(1800,.07,.2);}
 function setWeapon(w){if(w==='pistol'&&!SV.pistol){if(SV.money>=300){G.addMoney(-300);SV.pistol=true;SV.ammo+=24;G.saveGame();G.toast('Pistol khareed liya ($300)',2200);}else{G.toast('Pistol $300 ka hai — paise kam hain',2200);return;}}
  weapon=w;btnAtk.textContent=w==='pistol'?'🔫':'👊';G.statHud();G.toast(w==='pistol'?'Pistol nikal liya':'Haath (fists)',1000);}
@@ -153,6 +154,7 @@ ST.race={start(s,st){s.k=0;s.t0=3.2;s.riv=[];s.pts=st.cps.map(q=>({x:roadC(q[0])
   const f=G.focusPos(),p=s.pts[s.k];if(G.mode==='car'&&Math.hypot(f.x-p.x,f.z-p.z)<17){s.k++;G.tone(880,.1,.06,'triangle');if(s.k>=s.pts.length)return'done';const q=s.pts[s.k];s.mk.x=q.x;s.mk.z=q.z;s.bc.position.set(q.x,65,q.z);}
   return null;},
  end(s){for(const c of s.riv||[])scene.remove(c.mesh);if(s.bc)s.bc.parent.remove(s.bc);const i=G.markers.indexOf(s.mk);if(i>=0)G.markers.splice(i,1);}};
+const HI3={m5:'स्टेडियम के पास गुंडे लोगों को तंग कर रहे हैं। गाड़ी से उतरो और उन्हें सबक सिखाओ!',m6:'एक चोर मॉल से गाड़ी लेकर भाग रहा है। पीछा करो और उसके पास रहो!',m7:'तुम पकड़े जाने वाले हो! पुलिस पीछे है, पहले घर पहुँचो, फिर सितारे ख़त्म करो।',m8:'तीन प्रतिद्वंद्वी, छह चेकपॉइंट। सबसे पहले पहुँचो!',m9:'शहर का सबसे बड़ा डॉन मॉल के पास अपने गुंडों के साथ है। यह आख़िरी लड़ाई है!'};
 const raceCps=[[5,3],[6,5],[4,6],[2,5],[1,3],[3,2]];
 G.missions.push(
  {id:'m5',title:'Gunde Bhagao',giver:'park',time:270,intro:'Stadium ke paas gunde logon ko tang kar rahe hain. Gaari se utro aur unhe sabaq sikhao!',steps:[{type:'kill',lm:'stadium',n:5,text:'Stadium ke gundon ko haraao (F = maro)'}],reward:{money:1300,xp:180},extraHud:()=>'<small>Dushman bache: '+((M.s&&M.s.alive)!=null?M.s.alive:'?')+'</small>'},
@@ -161,6 +163,7 @@ G.missions.push(
  {id:'m8',title:'Street Race',giver:'mall',time:200,needCar:true,intro:'3 rivals, 6 checkpoints. Sabse pehle pahuncho — ya haaro!',steps:[{type:'race',cps:raceCps,text:'Race: checkpoints pakdo (pehle pahuncho)'}],reward:{money:2800,xp:300},extraHud:()=>'<small>Checkpoint '+Math.min(6,((M.s&&M.s.k)||0)+1)+'/6</small>'},
  {id:'m9',title:'Bada Don',giver:'stadium',time:330,intro:'Shehar ka sabse bada don Mall ke paas apne gundon ke saath hai. Ye aakhri ladai hai!',steps:[{type:'kill',lm:'mall',n:4,boss:true,text:'Mall ke Don aur uske gunde khatam karo'}],reward:{money:5000,xp:500},extraHud:()=>'<small>Dushman bache: '+((M.s&&M.s.alive)!=null?M.s.alive:'?')+'</small>'});
 
+G.missions.forEach(d=>{if(HI3[d.id])d.hi=HI3[d.id];});
 /* ───────── per-frame ───────── */
 const hookPrev=G.extraBlock;
 G.hooks.update.push(dt=>{
