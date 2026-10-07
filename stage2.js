@@ -64,7 +64,7 @@ function footStep(dt){me.auto=null;const man=G.manualInp();let thr=man.thr,st=ma
  if(!G.indoor&&homeCD<=0&&sp>0){const l=lm(SV.home);if(Math.hypot(me.x-l.door.x,me.z-l.door.z)<1.8)enterHome();}}
 G.camHook=dt=>{if(G.mode!=='foot')return false;const fx=Math.sin(me.h),fz=Math.cos(me.h);let tx=me.x-fx*4.4,tz=me.z-fz*4.4,ty=2.3;
  if(G.indoor){tx=clamp(tx,ROOM.cx-6.5,ROOM.cx+6.5);tz=clamp(tz,ROOM.cz-4.5,ROOM.cz+4.6);ty=2.4;}
- const cs=G.camState;if(cs.snap){cs.pos.set(tx,ty,tz);cs.snap=false;}else cs.pos.lerp(new T.Vector3(tx,ty,tz),1-Math.exp(-dt*6));
+ const cs=G.camState;if(cs.snap){cs.pos.set(tx,ty,tz);cs.snap=false;}else cs.pos.lerp(G.camTmp.set(tx,ty,tz),1-Math.exp(-dt*6));
  camera.position.copy(cs.pos);camera.lookAt(me.x+fx*1.5,1.3,me.z+fz*1.5);cs.fov=60;return true;};
 
 /* ───────── traffic ───────── */
@@ -78,15 +78,15 @@ function spawnNpc(){const n=G.buildCar(pick(['#2f6fb5','#e8e8e8','#222','#b8b8b8
 const npcTarget=n=>{const o=lo(n.d,3.8);return{x:roadC(n.to[0])+o[0],z:roadC(n.to[1])+o[1]};};
 function npcStep(n,dt){let tg=npcTarget(n);
  if(Math.hypot(tg.x-n.x,tg.z-n.z)<6){const i=n.to[0],j=n.to[1],opts=[0,1,2,3].filter(k=>k!==(n.d+2)%4&&inB(i+D[k][0],j+D[k][1])),w=opts.map(k=>k===n.d?3:1);let r=Math.random()*w.reduce((a,b)=>a+b,0),pk=opts[0];
-  for(let q=0;q<opts.length;q++){r-=w[q];if(r<=0){pk=opts[q];break;}}n.d=pk;n.to=[i+D[pk][0],j+D[pk][1]];tg=npcTarget(n);}
+  for(let q=0;q<opts.length;q++){r-=w[q];if(r<=0){pk=opts[q];break;}}if(n.choose)pk=n.choose(n,opts);n.d=pk;n.to=[i+D[pk][0],j+D[pk][1]];tg=npcTarget(n);}
  const err=wrapA(Math.atan2(tg.x-n.x,tg.z-n.z)-n.h);n.h+=clamp(err,-1.5*dt,1.5*dt);n.steer=clamp(err*1.5,-1,1);let vt=Math.abs(err)>.5?5:n.vmax;
- if(n.ghost>0)n.ghost-=dt;else{const fx=Math.sin(n.h),fz=Math.cos(n.h);let blocked=false;
+ if(n.ghost>0)n.ghost-=dt;else if(!n.noBlock){const fx=Math.sin(n.h),fz=Math.cos(n.h);let blocked=false;
   const chk=(ox,oz)=>{const dx=ox-n.x,dz=oz-n.z,fwd=dx*fx+dz*fz,lat=Math.abs(dx*fz-dz*fx);return fwd>1&&fwd<12&&lat<2.3;};
   if(chk(car.x,car.z)||(G.mode==='foot'&&chk(me.x,me.z)))blocked=true;for(const o of npcs)if(o!==n&&chk(o.x,o.z)){blocked=true;break;}
   if(G.extraBlock&&G.extraBlock(n,chk))blocked=true;
   if(blocked)vt=0;n.stuck=blocked&&n.v<.3?n.stuck+dt:0;if(n.stuck>6){n.ghost=4;n.stuck=0;}}
  n.v+=clamp(vt-n.v,-9*dt,4*dt);n.x+=Math.sin(n.h)*n.v*dt;n.z+=Math.cos(n.h)*n.v*dt;n.vf=n.v;n.vl=0;n.brake=vt<n.v-.5;n.acc2=0;G.syncCarMesh(n,dt);}
-G.circleProviders.push(()=>npcCircles);
+G.circleProviders.push(()=>npcCircles);G.npcStep=npcStep;
 
 /* pedestrians */
 const peds=G.peds=[];
@@ -128,7 +128,7 @@ function exitHome(){if(!G.indoor)return false;const l=lm(SV.home);homeCD=4;
  G.fade(()=>{G.indoor=false;INT.visible=false;trafficGroup.visible=pedGroup.visible=true;car.mesh.visible=true;parkCarAtHome(l);me.x=l.door.x;me.z=l.door.z+1;me.h=0;placePerson(me);G.mode='foot';G.cancelAll();G.snapCam();$('mini').style.visibility='visible';});return true;}
 Object.assign(G,{enterHome,exitHome});
 function sleepNow(){if(!G.indoor){G.toast('Ghar ke andar jao, phir so sakte ho');return;}
- G.fade(()=>{G.time=7;me.hp=100;car.hp=100;G.setWeather(pick(['clear','clear','cloudy','rain']),200);SV.mi=SV.mi;G.saveGame();G.toast('Subah ho gayi ☀ — health aur gaari theek, game save',2800);},700);}
+ G.fade(()=>{G.time=7;me.hp=100;car.hp=100;G.setWeather(pick(['clear','clear','cloudy','rain']),200);G.saveGame();G.toast('Subah ho gayi ☀ — health aur gaari theek, game save',2800);setTimeout(()=>G.event('sleep',null,true),600);},700);}
 function changeHome(to){const l=lm(to);if(!l||l.kind!=='house'){G.toast('Aisa ghar nahi hai');return;}
  if(!SV.owned.includes(to)){const price=to==='home2'?4000:12000;if(SV.money<price){G.toast('Paise kam hain — '+l.name+' ka daam $'+price,2800);return;}G.addMoney(-price);SV.owned.push(to);}
  SV.home=to;G.saveGame();homeMk.x=l.stop.x;homeMk.z=l.stop.z;
@@ -144,6 +144,7 @@ defs.push(
  {id:'m2',title:'Parcel Delivery',giver:'petrol',time:200,intro:'Bazaar se parcel uthao aur Hospital pahunchao. Waqt kam hai!',steps:[{type:'goto',lm:'bazaar',veh:'any',text:'Bazaar se parcel uthao'},{type:'goto',lm:'hospital',veh:'any',text:'Parcel Hospital pahunchao'}],reward:{money:700,xp:80}},
  {id:'m3',title:'Taxi Service',giver:'hospital',time:210,needCar:true,intro:'Mall par ek passenger intezar kar raha hai. Aaram se chalana!',steps:[{type:'pickup',lm:'mall',text:'Mall par passenger ko uthao (gaari roko)'},{type:'goto',lm:'stadium',veh:'car',text:'Passenger ko Stadium chhodo'}],reward:{money:900,xp:110}},
  {id:'m4',title:'City Race',giver:'stadium',time:160,needCar:true,intro:'6 checkpoints, 160 second. Full speed!',steps:cp,reward:{money:1500,xp:160}});
+const HI1=['चलो, पहले पेट्रोल पंप तक चलते हैं।','बाज़ार से पार्सल उठाओ और अस्पताल पहुँचाओ। वक़्त कम है!','मॉल पर एक सवारी इंतज़ार कर रही है। आराम से चलाना!','छह चेकपॉइंट, एक सौ साठ सेकंड। पूरी रफ़्तार से!'];defs.forEach((d,i)=>{d.hi=HI1[i];});
 const tgtOf=st=>st.lm?lm(st.lm).stop:{x:st.x,z:st.z};
 const ST=G.stepTypes={
  goto:{start(s,st){s.t=tgtOf(st);s.bc=G.beacon(s.t.x,s.t.z,'#ffd23f',130,2.4);s.mk={id:'obj',x:s.t.x,z:s.t.z,color:'#ffd23f',big:1};G.markers.push(s.mk);},
@@ -158,11 +159,11 @@ let giverMk=null,giverBc=null;
 function setGiver(){clearGiver();const d=defs[SV.mi];if(!d)return;const l=lm(d.giver);giverMk={id:'giver',x:l.stop.x,z:l.stop.z,color:'#ff8a3d',big:1};G.markers.push(giverMk);giverBc=G.beacon(l.stop.x,l.stop.z,'#ff8a3d',110,2.2);}
 function clearGiver(){if(giverBc){giverBc.parent.remove(giverBc);giverBc=null;}if(giverMk){const i=G.markers.indexOf(giverMk);if(i>=0)G.markers.splice(i,1);giverMk=null;}}
 function beginStep(){const d=M.active,st=d.steps[M.step],h=ST[st.type];M.s={};if(!h){console.warn('step type missing',st.type);return;}h.start(M.s,st,d);}
-function endStep(){if(M.active){const st=M.active.steps[M.step],h=ST[st.type];if(h&&h.end)h.end(M.s,st);}}
-function startMission(d){if(M.active)return false;if(!d){G.toast('Saare missions khatam! 🏆');return false;}clearGiver();M.active=d;M.step=0;M.left=d.time||0;if(d.onStart)d.onStart();beginStep();G.say(d.intro,null,null);G.toast('MISSION: '+d.title,2600);return true;}
+function endStep(){if(M.active&&M.active.steps[M.step]){const st=M.active.steps[M.step],h=ST[st.type];if(h&&h.end)h.end(M.s,st);M.s={};}}
+function startMission(d){if(M.active)return false;if(!d){G.toast('Saare missions khatam! 🏆');return false;}clearGiver();M.active=d;M.step=0;M.left=d.time||0;if(d.onStart)d.onStart();beginStep();G.say(d.intro,d.hi||null,d.hi?'hi-IN':null);G.toast('MISSION: '+d.title,2600);return true;}
 function finishMission(ok,why){if(!M.active)return;const d=M.active;endStep();if(d.onEnd)d.onEnd(ok);M.active=null;M.cd=8;
- if(ok){G.addMoney(d.reward.money);G.addXP(d.reward.xp);SV.mi++;G.saveGame();G.toast('MISSION PASSED! +$'+d.reward.money+' · +'+d.reward.xp+' XP',3200);G.tone(784,.12,.07,'triangle');setTimeout(()=>G.tone(1046,.25,.07,'triangle'),140);}
- else{G.toast('Mission fail: '+(why||''),3000);G.burst(300,.4,.2);}
+ if(ok){G.addMoney(d.reward.money);G.addXP(d.reward.xp);SV.mi++;G.saveGame();G.toast('MISSION PASSED! +$'+d.reward.money+' · +'+d.reward.xp+' XP',3200);G.tone(784,.12,.07,'triangle');setTimeout(()=>G.tone(1046,.25,.07,'triangle'),140);setTimeout(()=>G.event('mission_pass',null,true),900);}
+ else{G.toast('Mission fail: '+(why||''),3000);G.burst(300,.4,.2);setTimeout(()=>G.event('mission_fail',null,true),900);}
  G.setMission('');setGiver();}
 G.startMission=startMission;G.finishMission=finishMission;
 const mm=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
@@ -209,7 +210,7 @@ G.hooks.ready.push(()=>{
  const xb=$('xbtns'),mk=(label,fn,t)=>{const b=document.createElement('button');b.className='cb sm';b.textContent=label;b.setAttribute('aria-label',t);b.addEventListener('click',fn);xb.appendChild(b);return b;};
  mk('🚪',()=>{if(G.indoor){exitHome();return;}if(G.mode==='car'){exitCar();return;}const l=lm(SV.home);if(Math.hypot(me.x-l.door.x,me.z-l.door.z)<5){enterHome();return;}enterCar();},'Gaari / Ghar');
  mk('🏃',()=>{runTog=!runTog;G.toast(runTog?'Daudna on':'Daudna off',900);},'Run');
- const nn=S.quality==='low'?5:S.quality==='med'?8:12,np=S.quality==='low'?12:S.quality==='med'?18:24;for(let i=0;i<nn;i++)spawnNpc();for(let i=0;i<np;i++)spawnPed();
+ const nn=S.quality==='low'?3:S.quality==='med'?7:12,np=S.quality==='low'?8:S.quality==='med'?16:24;for(let i=0;i<nn;i++)spawnNpc();for(let i=0;i<np;i++)spawnPed();
  const l=lm(SV.home);homeMk.x=l.stop.x;homeMk.z=l.stop.z;G.markers.push(homeMk);
  if(SV.home!=='home')parkCarAtHome(l);statHud();setGiver();M.cd=18;G.snapCam();
  if(SV.mi>0)setTimeout(()=>G.toast('Game load ho gaya — Level '+lvl()+', mission '+(SV.mi+1),2600),1200);});
