@@ -18,6 +18,7 @@ const MODELS={
 /* ───────── sky environment (reflections) ───────── */
 let pmrem=null,envScene=null,envUni=null,sunDisc=null,envMats=[];G.env=null;G.envRT=null;
 try{
+ if(Q===0)throw new Error('low quality: reflections off');
  pmrem=new T.PMREMGenerator(renderer);envScene=new T.Scene();
  envUni={top:{value:new T.Color('#2e7ed6')},bot:{value:new T.Color('#cfe8fb')}};
  envScene.add(new T.Mesh(new T.SphereGeometry(80,24,12),new T.ShaderMaterial({uniforms:envUni,side:T.BackSide,depthWrite:false,
@@ -39,8 +40,8 @@ refreshEnv();
 const cars=[];
 const plateTex=G.ctex(128,32,g=>{g.fillStyle='#f4f4ee';g.fillRect(0,0,128,32);g.fillStyle='#1a1a1a';g.font='bold 21px monospace';g.textAlign='center';g.textBaseline='middle';g.fillText('SARAS 786',64,17);g.strokeStyle='#1a1a1a';g.lineWidth=2;g.strokeRect(1,1,126,30);});
 const plateMat=new T.MeshBasicMaterial({map:plateTex});
-function upgradeMaterials(c){const pm=c.paint;if(!pm)return;
- const phys=new T.MeshPhysicalMaterial({color:pm.color.clone(),metalness:.55,roughness:.28,clearcoat:1,clearcoatRoughness:.05,envMap:G.env||null,envMapIntensity:1.15});
+function upgradeMaterials(c,lite){const pm=c.paint;if(!pm||Q===0)return;
+ const phys=new T.MeshPhysicalMaterial({color:pm.color.clone(),metalness:.55,roughness:.28,clearcoat:lite?0:1,clearcoatRoughness:.05,envMap:G.env||null,envMapIntensity:1.15});
  const glass=new T.MeshPhysicalMaterial({color:0x10161d,metalness:.1,roughness:.04,transparent:true,opacity:.82,envMap:G.env||null,envMapIntensity:1.4});
  c.body.traverse(o=>{if(!o.isMesh)return;if(o.material===pm)o.material=phys;else if(o.material&&o.material.transparent&&o.material.opacity<1&&o.material.shininess!==undefined&&o.material.color.getHex()===0x1b2733)o.material=glass;});
  c.paint=phys;envMats.push(phys,glass);}
@@ -63,10 +64,10 @@ function attachModel(c){const key=c.shape,pr=loaded[key];if(!pr||c.mesh.userData
  c.mesh.add(inst);c.mesh.userData.hasModel=true;}
 const origBuild=G.buildCar;
 G.buildCar=function(color,o){const c=origBuild(color,o);finishCar(c,o&&o.lights===false);return c;};
-function finishCar(c,lite){upgradeMaterials(c);if(!lite&&Q>0)addDetails(c);cars.push(c);attachModel(c);}
+function finishCar(c,lite){upgradeMaterials(c,lite);if(!lite&&Q>0)addDetails(c);cars.push(c);attachModel(c);}
 
 /* ───────── real model loading (.glb) ───────── */
-const loaded={};let personRoot=null,personClips=[];const loader=T.GLTFLoader?new T.GLTFLoader():null;const envPending=[];
+const loaded={};let personRoot=null,personClips=[];const loader=T.GLTFLoader?new T.GLTFLoader():null;
 function normalizeCar(gltf,cfg){const root=gltf.scene,wrap=new T.Group();wrap.add(root);const v=new T.Vector3();
  let box=new T.Box3().setFromObject(wrap);box.getSize(v);let rot=cfg.rot||0;if(v.x>v.z*1.05)rot+=PI/2;if(cfg.flip)rot+=PI;root.rotation.y=rot;
  box=new T.Box3().setFromObject(wrap);box.getSize(v);root.scale.multiplyScalar((cfg.len||4.5)/Math.max(v.z,.01));
@@ -96,6 +97,7 @@ function personAnim(dt){if(!mixer||G.mode!=='foot')return;const sp=G.footSpeed||
 /* ───────── world realism ───────── */
 const cones=[];
 function setupWorld(){
+ if(Q===0)return;
  for(const m of G.bMats||[]){if(m.map){m.bumpMap=m.map;m.bumpScale=1.3;m.needsUpdate=true;}}
  for(const m of G.roadMats||[]){if(m.map){m.bumpMap=m.map;m.bumpScale=.5;m.envMap=G.env||null;m.envMapIntensity=0;m.needsUpdate=true;}}
  if(G.ground){const gt=G.ctex(256,256,g=>{g.fillStyle='#fff';g.fillRect(0,0,256,256);for(let i=0;i<2600;i++){const v=170+Math.random()*85|0;g.fillStyle='rgba('+v+','+v+','+(v-14)+','+(.18+Math.random()*.25)+')';g.fillRect(Math.random()*256,Math.random()*256,2+Math.random()*3,2+Math.random()*3);}},true);
