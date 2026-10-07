@@ -17,6 +17,7 @@ const DEF={keys:{groq:'',gemini:'',openrouter:''},models:{groq:'llama-3.3-70b-ve
 let S=JSON.parse(JSON.stringify(DEF));
 try{const s=JSON.parse(localStorage.getItem('saras_settings')||'{}');S=Object.assign(S,s);S.keys=Object.assign({},DEF.keys,s.keys||{});S.models=Object.assign({},DEF.models,s.models||{});}catch(e){}
 G.S=S;G.saveS=()=>{try{localStorage.setItem('saras_settings',JSON.stringify(S));}catch(e){}};
+try{if(!localStorage.getItem('saras_settings')){const dm=navigator.deviceMemory||4;S.quality=dm<=4?'low':dm<=6?'med':'high';}}catch(e){}
 const Q=S.quality==='low'?0:S.quality==='med'?1:2;
 
 /* ───────── renderer / scene ───────── */
@@ -25,7 +26,7 @@ const renderer=new T.WebGLRenderer({canvas,antialias:Q>0,powerPreference:'high-p
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,Q===2?2:Q===1?1.5:1));
 renderer.outputEncoding=T.sRGBEncoding;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
 renderer.shadowMap.enabled=Q>0;renderer.shadowMap.type=T.PCFSoftShadowMap;
-const scene=new T.Scene(),camera=new T.PerspectiveCamera(65,1,.3,1500);
+const scene=new T.Scene(),camera=new T.PerspectiveCamera(65,1,.3,Q===0?750:1500);
 scene.fog=new T.FogExp2(0xbfe3ff,.0014);
 const cityGroup=new T.Group(),beaconGroup=new T.Group();scene.add(cityGroup,beaconGroup);
 Object.assign(G,{renderer,scene,camera,city:cityGroup,beaconGroup});
@@ -347,15 +348,15 @@ function stepQueue(dt){if(!AP.cur&&AP.queue.length){const a=AP.queue.shift(),f=A
  if(AP.cur){let d=true;try{d=AP.cur.update?AP.cur.update(dt):true;}catch(e){console.warn(e);}if(d){AP.cur=null;}}}
 
 /* ───────── camera ───────── */
-const camState={mode:0,pos:new T.Vector3(),shake:0};G.camState=camState;
+const camTmp=new T.Vector3(),camState={mode:0,pos:new T.Vector3(),shake:0,fovAdd:0};G.camTmp=camTmp;G.camState=camState;
 G.snapCam=()=>{camState.snap=true;};
 G.focusPos=()=>({x:car.x,z:car.z});G.focusH=()=>car.h;
-function carCam(dt){const c=car,fx=Math.sin(c.h),fz=Math.cos(c.h),m=camState.mode;let fov=62+clamp(Math.abs(c.vf)*.55,0,14);
+function carCam(dt){const c=car,fx=Math.sin(c.h),fz=Math.cos(c.h),m=camState.mode;let fov=62+clamp(Math.abs(c.vf)*.7,0,18);
  if(m===2){camera.position.set(c.x+fx*.35,1.38,c.z+fz*.35);camera.lookAt(c.x+fx*20,1.25,c.z+fz*20);}
  else{const d=m===1?15:8.4,hh=m===1?7.5:3.3,tx=c.x-fx*d,tz=c.z-fz*d;
-  if(camState.snap){camState.pos.set(tx,hh,tz);camState.snap=false;}else camState.pos.lerp(new T.Vector3(tx,hh,tz),1-Math.exp(-dt*5));
+  if(camState.snap){camState.pos.set(tx,hh,tz);camState.snap=false;}else camState.pos.lerp(camTmp.set(tx,hh,tz),1-Math.exp(-dt*5));
   camera.position.copy(camState.pos);camera.lookAt(c.x+fx*5,1.5,c.z+fz*5);}
- camState.fov=fov;}
+ camState.fov=fov+camState.fovAdd;}
 function applyCam(dt){if(!(G.camHook&&G.camHook(dt)))carCam(dt);
  if(camState.shake>0){camera.position.x+=(Math.random()-.5)*camState.shake;camera.position.y+=(Math.random()-.5)*camState.shake;camState.shake=Math.max(0,camState.shake-dt*2.2);}
  const f=camState.fov||62;if(Math.abs(camera.fov-f)>.05){camera.fov+=(f-camera.fov)*Math.min(1,dt*4);camera.updateProjectionMatrix();}}
@@ -363,7 +364,7 @@ function applyCam(dt){if(!(G.camHook&&G.camHook(dt)))carCam(dt);
 /* ───────── sky / weather update ───────── */
 const KF=[[0,'#04070f','#101a30',0,.22,1],[5,'#16203d','#3c4a6e',0,.25,.85],[6,'#3a4f86','#f2a36b',.5,.4,.35],[8,'#3f7fcb','#cfe3f2',1.1,.62,0],[12,'#2e7ed6','#cfe8fb',1.35,.7,0],[16.5,'#3c78bd','#f5deb5',1.15,.64,0],[18.3,'#3f4f93','#f08a52',.55,.42,.3],[19.5,'#161a3d','#4a3f6a',0,.28,.85],[21,'#060a18','#141c34',0,.22,1],[24,'#04070f','#101a30',0,.22,1]]
  .map(k=>({t:k[0],top:new T.Color(k[1]),bot:new T.Color(k[2]),sun:k[3],hemi:k[4],night:k[5]}));
-const cTop=new T.Color(),cBot=new T.Color(),grey=new T.Color('#69737c'),sunWarm=new T.Color('#fff1d8'),sunDusk=new T.Color('#ff9a5a');
+const tmpC1=new T.Color(),tmpC2=new T.Color(),cFlashT=new T.Color('#dfe8ff'),cFlashB=new T.Color('#e8eeff'),cWhite=new T.Color('#ffffff'),bgIndoor=new T.Color('#14110e'),cTop=new T.Color(),cBot=new T.Color(),grey=new T.Color('#69737c'),sunWarm=new T.Color('#fff1d8'),sunDusk=new T.Color('#ff9a5a');
 let flash=0,flashT=6,thunderQ=[];G.night=0;
 function skyUpdate(dt){
  for(const k of['cloud','rain','fog','dark','storm'])W[k]+=(WTarget[k]-W[k])*Math.min(1,dt*.35);
@@ -371,16 +372,16 @@ function skyUpdate(dt){
  let a=KF[0],b=KF[1];for(let i=0;i<KF.length-1;i++)if(G.time>=KF[i].t&&G.time<=KF[i+1].t){a=KF[i];b=KF[i+1];break;}
  const f=(G.time-a.t)/(b.t-a.t||1);cTop.copy(a.top).lerp(b.top,f);cBot.copy(a.bot).lerp(b.bot,f);
  const sunI=a.sun+(b.sun-a.sun)*f,hemiI=a.hemi+(b.hemi-a.hemi)*f,night=a.night+(b.night-a.night)*f;G.night=night;
- const dk=W.dark,lum=1-night*.8;cTop.lerp(new T.Color().copy(grey).multiplyScalar(.55*lum+.1),dk*.85);cBot.lerp(new T.Color().copy(grey).multiplyScalar(.8*lum+.12),dk*.85);
+ const dk=W.dark,lum=1-night*.8;cTop.lerp(tmpC1.copy(grey).multiplyScalar(.55*lum+.1),dk*.85);cBot.lerp(tmpC2.copy(grey).multiplyScalar(.8*lum+.12),dk*.85);
  if(W.storm){flashT-=dt;if(flashT<=0){flash=1;flashT=rnd(3,9);thunderQ.push(rnd(.4,2.2));}}
  flash=Math.max(0,flash-dt*3.5);for(let i=thunderQ.length-1;i>=0;i--){thunderQ[i]-=dt;if(thunderQ[i]<=0){burst(220,2.2,.5);thunderQ.splice(i,1);}}
- if(flash>0){cTop.lerp(new T.Color('#dfe8ff'),flash*.6);cBot.lerp(new T.Color('#e8eeff'),flash*.6);}
+ if(flash>0){cTop.lerp(cFlashT,flash*.6);cBot.lerp(cFlashB,flash*.6);}
  skyU.top.value.copy(cTop);skyU.bot.value.copy(cBot);scene.fog.color.copy(cBot);scene.fog.density=W.fog+(G.indoor?-W.fog:0);
  const day=G.time>=6&&G.time<=18,t2=day?(G.time-6)/12:(((G.time<6?G.time+24:G.time))-18)/12,el=Math.max(.1,Math.sin(t2*PI)),az=Math.cos(t2*PI);
  const fp=G.focusPos();sun.position.set(fp.x+(day?az:-az)*130,el*150+10,fp.z+70);sun.target.position.set(fp.x,0,fp.z);
  moon.position.set(fp.x+(day?-az:az)*130,el*150+10,fp.z-70);moon.target.position.set(fp.x,0,fp.z);
  sun.color.copy(sunWarm).lerp(sunDusk,clamp(night*1.2,0,1)*(sunI>0?1:0));sun.intensity=G.indoor?0:sunI*(1-dk*.72);moon.intensity=G.indoor?0:night*.34*(1-dk*.5);
- hemi.intensity=G.indoor?.28:hemiI*(1-dk*.15)+flash*2.2;hemi.color.copy(cTop).lerp(new T.Color('#ffffff'),.55);
+ hemi.intensity=G.indoor?.28:hemiI*(1-dk*.15)+flash*2.2;hemi.color.copy(cTop).lerp(cWhite,.55);
  stars.material.opacity=clamp(night*1.1-dk,0,1);
  const em=clamp(night*1.15+dk*.35,0,1)*(G.indoor?0:1);for(const m of bMats)m.emissiveIntensity=em;if(G.lampPts)G.lampPts.material.opacity=clamp(night*1.3+dk*.4,0,1)*(G.indoor?0:1);
  roadMats.forEach(m=>{m.roughness=.92-.5*W.wet;m.color.setScalar(1-.28*W.wet);});
@@ -391,7 +392,7 @@ function skyUpdate(dt){
 const RN=2200,rainPos=new Float32Array(RN*6),rainGeo=new T.BufferGeometry();rainGeo.setAttribute('position',new T.BufferAttribute(rainPos,3));
 const rain=new T.LineSegments(rainGeo,new T.LineBasicMaterial({color:0xcfe0f5,transparent:true,opacity:.34,depthWrite:false,fog:false}));rain.frustumCulled=false;scene.add(rain);
 const rd=[];for(let i=0;i<RN;i++)rd.push({x:rnd(-30,30),y:rnd(-10,20),z:rnd(-30,30)});
-function rainUpdate(dt){const n=G.indoor?0:Math.floor(RN*clamp(W.rain,0,1)*(Q===0?.4:1));rain.visible=n>0;if(!n)return;rain.position.copy(camera.position);rainGeo.setDrawRange(0,n*2);
+function rainUpdate(dt){const n=G.indoor?0:Math.floor(RN*clamp(W.rain,0,1)*(Q===0?.28:1));rain.visible=n>0;if(!n)return;rain.position.copy(camera.position);rainGeo.setDrawRange(0,n*2);
  const wx=W.storm?.9:.3;for(let i=0;i<n;i++){const d=rd[i];d.y-=38*dt;if(d.y<-10){d.y=20;d.x=rnd(-30,30);d.z=rnd(-30,30);}
   const o=i*6;rainPos[o]=d.x;rainPos[o+1]=d.y;rainPos[o+2]=d.z;rainPos[o+3]=d.x+wx*.5;rainPos[o+4]=d.y+1;rainPos[o+5]=d.z;}
  rainGeo.attributes.position.needsUpdate=true;}
@@ -592,8 +593,8 @@ function update(dt){
  if(S.autoWeather){weatherHold-=dt;autoWT-=dt;if(autoWT<=0&&weatherHold<=0){autoWT=rnd(160,320);const r=Math.random(),ty=r<.45?'clear':r<.62?'cloudy':r<.8?'rain':r<.9?'fog':'storm';W.type=ty;WTarget=WT[ty];}}
  for(const h of G.hooks.update)h(dt);
  if(G.mode==='car')carStep(dt);else{G.syncCarMesh(car,dt);if(G.footAP)G.footAP(dt);}
- applyCam(dt);skyUpdate(dt);rainUpdate(dt);hud(dt);chatUpdate(dt);if(G.uiOn)drawMini();
- cityGroup.visible=!G.indoor;beaconGroup.visible=!G.indoor;sky.visible=!G.indoor;scene.background=G.indoor?new T.Color('#14110e'):null;}
+ applyCam(dt);skyUpdate(dt);rainUpdate(dt);hud(dt);chatUpdate(dt);if(G.uiOn&&(Q>0||((G.miniN=(G.miniN||0)+1)&1)===0))drawMini();
+ cityGroup.visible=!G.indoor;beaconGroup.visible=!G.indoor;sky.visible=!G.indoor;scene.background=G.indoor?bgIndoor:null;}
 let last=performance.now();
 function frame(now){requestAnimationFrame(frame);const dt=Math.max(0,Math.min(.05,(now-last)/1000));last=now;try{update(dt);}catch(e){console.error(e);}
  renderer.render(scene,camera);
