@@ -14,12 +14,12 @@ let weapon='fists',atkCD=0,hurtT=0,repCD=0,healCD=0;
 const hurtEl=document.createElement('div');hurtEl.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:9;transition:box-shadow .25s;box-shadow:inset 0 0 140px 30px rgba(255,40,40,0)';document.body.appendChild(hurtEl);
 function hurtFx(){hurtEl.style.boxShadow='inset 0 0 140px 40px rgba(255,40,40,.55)';setTimeout(()=>{hurtEl.style.boxShadow='inset 0 0 140px 30px rgba(255,40,40,0)';},260);}
 const dying={v:false};
-function hurtMe(n){if(dying.v||G.indoor)return;me.hp=Math.max(0,me.hp-n);hurtT=8;hurtFx();G.camState.shake=Math.max(G.camState.shake,.35);G.burst(300,.12,.2);if(me.hp<=0)wasted();}
+function hurtMe(n){if(dying.v||G.indoor)return;me.hp=Math.max(0,me.hp-n);hurtT=8;hurtFx();G.vib(110);G.camState.shake=Math.max(G.camState.shake,.35);G.burst(300,.12,.2);if(me.hp<=0)wasted();}
 G.hurtMe=hurtMe;
 
 /* ───────── wanted level + police ───────── */
 const WD={stars:0,lost:0,bust:0,spawnT:2,sirenT:0,flashT:0,busting:false},cops=[],copGroup=new T.Group();scene.add(copGroup);
-function setWanted(n){n=clamp(Math.round(n),0,5);if(n>WD.stars)WD.lost=0;WD.stars=n;G.statHud();}
+function setWanted(n){n=clamp(Math.round(n),0,5);if(n>WD.stars){WD.lost=0;G.vib([180,70,180]);}WD.stars=n;G.statHud();}
 G.setWanted=setWanted;G.wanted=()=>WD.stars;
 G.crime=lv=>{if(G.indoor)return;if(lv>WD.stars){const was=WD.stars;setWanted(lv);G.toast('Wanted: '+'★'.repeat(WD.stars),1800);if(!was)G.event('wanted',null,true);}else WD.lost=0;};
 G.statExtra=()=>(WD.stars?' · <b style="color:#ff6b5e">'+'★'.repeat(WD.stars)+'</b>':'')+(weapon==='pistol'?' · 🔫<b>'+SV.ammo+'</b>':'');
@@ -98,7 +98,7 @@ function attack(){if(G.indoor||G.mode!=='foot'){G.toast('Pehle gaari se utro (�
   for(const c of cops){const dx=c.x-me.x,dz=c.z-me.z;if(Math.hypot(dx,dz)<3){c.hp-=4;c.hurtBy=true;G.crime(Math.min(5,WD.stars+1));hit=true;}}
   G.burst(hit?500:900,.08,hit?.3:.08);return;}
  if(SV.ammo<=0){G.toast('Goliyan khatam — "goliyan kharido" bolo ($100)');return;}
- SV.ammo--;atkCD=.3;me.atk=.15;G.statHud();
+ SV.ammo--;atkCD=.3;me.atk=.15;G.vib(35);G.statHud();
  let best=null,ba=.5;const cand=[];for(const t of thugs)if(!t.dead)cand.push({o:t,k:'t'});for(const p of G.peds)if(p.down<=0)cand.push({o:p,k:'p'});for(const c of cops)cand.push({o:c,k:'c'});
  for(const q of cand){const dx=q.o.x-me.x,dz=q.o.z-me.z,d=Math.hypot(dx,dz);if(d>42)continue;const a=Math.abs(wrapA(Math.atan2(dx,dz)-me.h));if(a<ba){ba=a;best=q;}}
  let dist=40;if(best){me.h=Math.atan2(best.o.x-me.x,best.o.z-me.z);dist=Math.hypot(best.o.x-me.x,best.o.z-me.z);
