@@ -1,4 +1,4 @@
-/* SARAS CITY — Pakistani Character Outfit */
+/* SARAS CITY — Pakistani Character Outfit v2 */
 (function () {
   'use strict';
 
@@ -6,127 +6,240 @@
   if (!G || !G.T) return;
 
   const T = G.T;
-  let player = null;
+
   let outfit = null;
+  let characterWrap = null;
 
-  function createOutfit() {
-    if (!G.me || !G.me.mesh) return;
+  function findCharacterWrap() {
+    if (!G.me || !G.me.mesh) return null;
 
-    player = G.me.mesh;
-
-    if (outfit) return;
-
-    outfit = new T.Group();
-    outfit.name = 'PakistaniShalwarKameez';
+    const root = G.me.mesh;
 
     /*
-      Approximate Pakistani shalwar-kameez
-      built from lightweight Three.js geometry.
+      stage4.js puts the real person.glb inside
+      a Group after loading and normalizing it.
     */
 
-    // Kameez
-    const kameezMat = new T.MeshStandardMaterial({
-      color: 0xe8e1d2,
+    for (const child of root.children) {
+      let hasMesh = false;
+
+      child.traverse(function (o) {
+        if (o.isMesh) hasMesh = true;
+      });
+
+      if (hasMesh) return child;
+    }
+
+    return null;
+  }
+
+  function makeMaterial(color) {
+    return new T.MeshStandardMaterial({
+      color: color,
       roughness: 0.85,
       metalness: 0
     });
+  }
+
+  function createOutfit() {
+    characterWrap = findCharacterWrap();
+
+    if (!characterWrap || outfit) return false;
+
+    const box = new T.Box3().setFromObject(characterWrap);
+    const size = new T.Vector3();
+    const center = new T.Vector3();
+
+    box.getSize(size);
+    box.getCenter(center);
+
+    const h = size.y;
+
+    /*
+      Character is normalized by stage4.js to about 1.8m.
+      Use its actual bounding box so clothing follows
+      the real model instead of guessing coordinates.
+    */
+
+    const outfitRoot = new T.Group();
+    outfitRoot.name = 'PakistaniShalwarKameez';
+    outfitRoot.position.set(0, 0, 0);
+
+    /* ---------- KAMEEZ ---------- */
+
+    const kameezMat = makeMaterial(0xe8e1d2);
 
     const kameez = new T.Mesh(
-      new T.CylinderGeometry(0.31, 0.38, 0.82, 16),
+      new T.CylinderGeometry(
+        size.x * 0.22,
+        size.x * 0.34,
+        h * 0.42,
+        20
+      ),
       kameezMat
     );
 
-    kameez.position.y = 0.05;
-    outfit.add(kameez);
+    kameez.position.set(
+      0,
+      h * 0.57,
+      0
+    );
 
-    // Shalwar
-    const shalwarMat = new T.MeshStandardMaterial({
-      color: 0xd8d0c0,
-      roughness: 0.9,
-      metalness: 0
-    });
+    outfitRoot.add(kameez);
+
+    /* ---------- SHALWAR ---------- */
+
+    const shalwarMat = makeMaterial(0xd7cfbd);
 
     const shalwar = new T.Mesh(
-      new T.CylinderGeometry(0.30, 0.43, 0.65, 16),
+      new T.CylinderGeometry(
+        size.x * 0.30,
+        size.x * 0.39,
+        h * 0.34,
+        20
+      ),
       shalwarMat
     );
 
-    shalwar.position.y = -0.67;
-    outfit.add(shalwar);
+    shalwar.position.set(
+      0,
+      h * 0.28,
+      0
+    );
 
-    // Kameez collar
-    const collarMat = new T.MeshStandardMaterial({
-      color: 0xcfc5b2,
-      roughness: 0.8
-    });
+    outfitRoot.add(shalwar);
+
+    /* ---------- WAISTCOAT ---------- */
+
+    const waistcoatMat = makeMaterial(0x263746);
+
+    const waistcoat = new T.Mesh(
+      new T.BoxGeometry(
+        size.x * 0.48,
+        h * 0.30,
+        size.z * 0.18
+      ),
+      waistcoatMat
+    );
+
+    waistcoat.position.set(
+      0,
+      h * 0.59,
+      size.z * 0.13
+    );
+
+    outfitRoot.add(waistcoat);
+
+    /* ---------- COLLAR ---------- */
+
+    const collarMat = makeMaterial(0xc8bda9);
 
     const collar = new T.Mesh(
-      new T.TorusGeometry(0.105, 0.018, 6, 16),
+      new T.TorusGeometry(
+        size.x * 0.10,
+        size.x * 0.018,
+        8,
+        20
+      ),
       collarMat
     );
 
     collar.rotation.x = Math.PI / 2;
-    collar.position.y = 0.47;
-    outfit.add(collar);
 
-    // Waistcoat
-    const waistcoatMat = new T.MeshStandardMaterial({
-      color: 0x263746,
-      roughness: 0.8,
-      metalness: 0
-    });
-
-    const waistcoat = new T.Mesh(
-      new T.BoxGeometry(0.42, 0.58, 0.16),
-      waistcoatMat
+    collar.position.set(
+      0,
+      h * 0.78,
+      size.z * 0.18
     );
 
-    waistcoat.position.set(0, 0.08, 0.27);
-    outfit.add(waistcoat);
+    outfitRoot.add(collar);
 
-    // Small buttons
+    /* ---------- BUTTONS ---------- */
+
     const buttonMat = new T.MeshStandardMaterial({
       color: 0xc9a34a,
-      metalness: 0.45,
-      roughness: 0.35
+      metalness: 0.35,
+      roughness: 0.4
     });
 
     for (let i = 0; i < 3; i++) {
       const button = new T.Mesh(
-        new T.SphereGeometry(0.018, 8, 8),
+        new T.SphereGeometry(size.x * 0.018, 8, 8),
         buttonMat
       );
 
       button.position.set(
         0,
-        0.27 - i * 0.09,
-        0.365
+        h * 0.70 - i * h * 0.065,
+        size.z * 0.23
       );
 
-      outfit.add(button);
+      outfitRoot.add(button);
     }
 
-    player.add(outfit);
+    /* ---------- SLEEVES ---------- */
+
+    const sleeveMat = makeMaterial(0xe8e1d2);
+
+    for (const side of [-1, 1]) {
+      const sleeve = new T.Mesh(
+        new T.CylinderGeometry(
+          size.x * 0.075,
+          size.x * 0.09,
+          h * 0.28,
+          12
+        ),
+        sleeveMat
+      );
+
+      sleeve.rotation.z = side * Math.PI / 2.4;
+
+      sleeve.position.set(
+        side * size.x * 0.30,
+        h * 0.60,
+        0
+      );
+
+      outfitRoot.add(sleeve);
+    }
+
+    /*
+      Keep clothing above the character mesh.
+    */
+    outfitRoot.traverse(function (o) {
+      if (o.isMesh) {
+        o.castShadow = true;
+        o.renderOrder = 5;
+      }
+    });
+
+    characterWrap.add(outfitRoot);
+
+    outfit = outfitRoot;
+
+    console.log('Pakistani outfit attached');
+
+    if (G.toast) {
+      G.toast('Pakistani outfit loaded', 1800);
+    }
+
+    return true;
   }
 
-  function updateOutfit() {
+  function update() {
     if (!outfit) {
       createOutfit();
-      return;
     }
+  }
 
-    // Keep outfit aligned with the player.
-    outfit.rotation.set(0, 0, 0);
+  if (G.hooks && G.hooks.update) {
+    G.hooks.update.push(update);
   }
 
   if (G.hooks && G.hooks.ready) {
     G.hooks.ready.push(function () {
-      setTimeout(createOutfit, 1200);
+      setTimeout(createOutfit, 1800);
     });
-  }
-
-  if (G.hooks && G.hooks.update) {
-    G.hooks.update.push(updateOutfit);
   }
 
 })();
