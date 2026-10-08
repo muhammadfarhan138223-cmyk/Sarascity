@@ -13,9 +13,9 @@ let sd=7;const R=()=>{sd|=0;sd=sd+0x6D2B79F5|0;let t=Math.imul(sd^sd>>>15,1|sd);
 const rr=(a,b)=>a+R()*(b-a);
 
 /* ───────── settings ───────── */
-const DEF={keys:{groq:'',gemini:'',openrouter:''},models:{groq:'llama-3.3-70b-versatile',gemini:'gemini-2.5-flash',openrouter:'meta-llama/llama-3.3-70b-instruct:free'},rec:'hi-IN',mic:true,tts:true,quality:'high',autoWeather:true,always:true,wake:false,chatty:true};
+const DEF={keys:{groq:'',gemini:'',openrouter:''},models:{groq:'',gemini:'',openrouter:''},snd:'all',vib:true,mode:'online',rec:'hi-IN',mic:true,tts:true,quality:'high',autoWeather:true,always:true,wake:false,chatty:true};
 let S=JSON.parse(JSON.stringify(DEF));
-try{const s=JSON.parse(localStorage.getItem('saras_settings')||'{}');S=Object.assign(S,s);S.keys=Object.assign({},DEF.keys,s.keys||{});S.models=Object.assign({},DEF.models,s.models||{});}catch(e){}
+try{const s=JSON.parse(localStorage.getItem('saras_settings')||'{}');S=Object.assign(S,s);S.keys=Object.assign({},DEF.keys,s.keys||{});S.models=Object.assign({},DEF.models,s.models||{});for(const k in S.models){if(['llama-3.3-70b-versatile','gemini-2.5-flash','meta-llama/llama-3.3-70b-instruct:free'].includes(S.models[k]))S.models[k]='';}}catch(e){}
 G.S=S;G.saveS=()=>{try{localStorage.setItem('saras_settings',JSON.stringify(S));}catch(e){}};
 try{if(!localStorage.getItem('saras_settings')){const dm=navigator.deviceMemory||4;S.quality=dm<=4?'low':dm<=6?'med':'high';}}catch(e){}
 const Q=S.quality==='low'?0:S.quality==='med'?1:2;
@@ -221,7 +221,7 @@ function collideCar(c){let hs=0;const fx=Math.sin(c.h),fz=Math.cos(c.h);
  for(const o of[1.3,-1.3]){const res=resolve(c.x+fx*o,c.z+fz*o,1.05);if(!res.hit)continue;c.x+=res.x-(c.x+fx*o);c.z+=res.z-(c.z+fz*o);
   const vn=c.vx*res.nx+c.vz*res.nz;if(vn<0){c.vx-=1.3*vn*res.nx;c.vz-=1.3*vn*res.nz;hs=Math.max(hs,-vn);}}
  c.x=clamp(c.x,-60,SIZE+60);c.z=clamp(c.z,-60,SIZE+60);
- if(hs>3.5){c.hp=Math.max(0,c.hp-(hs-3)*2.4);if(c===car){camState.shake=Math.min(1.2,hs*.08);burst(500,.35,Math.min(.5,hs*.04));if(hs>7)G.event('crash');}if(G.onCrash)G.onCrash(c,hs);}
+ if(hs>3.5){c.hp=Math.max(0,c.hp-(hs-3)*2.4);if(c===car){camState.shake=Math.min(1.2,hs*.08);burst(500,.35,Math.min(.5,hs*.04));G.vib(30+Math.min(120,hs*9));if(hs>7)G.event('crash');}if(G.onCrash)G.onCrash(c,hs);}
  return hs;}
 G.stepCar=function(c,inp,dt){const wet=W.wet,hb=!!inp.hb,maxV=(c.maxV||42)*(c.hp<35?.75:1),acc=c.acc||1;
  const tg=clamp(inp.steer||0,-1,1);c.steer+=(tg-c.steer)*Math.min(1,dt*(tg===0?6:9));
@@ -270,13 +270,15 @@ function route(x,z,h,tx,tz,laneOff){laneOff=laneOff==null?3.8:laneOff;const rp=r
 Object.assign(G,{route,roadPoint,nearNode});
 
 /* ───────── audio ───────── */
-let AC=null,noiseBuf=null,eng=null,rainG=null;
-function initAudio(){if(AC)return;try{AC=new(window.AudioContext||window.webkitAudioContext)();const len=AC.sampleRate*2;noiseBuf=AC.createBuffer(1,len,AC.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
- const o=AC.createOscillator(),o2=AC.createOscillator(),f=AC.createBiquadFilter(),g=AC.createGain();o.type='sawtooth';o2.type='square';f.type='lowpass';f.frequency.value=520;g.gain.value=0;o.connect(f);o2.connect(f);f.connect(g);g.connect(AC.destination);o.start();o2.start();eng={o,o2,f,g};
- const rs=AC.createBufferSource();rs.buffer=noiseBuf;rs.loop=true;const rf=AC.createBiquadFilter();rf.type='lowpass';rf.frequency.value=2600;rainG=AC.createGain();rainG.gain.value=0;rs.connect(rf);rf.connect(rainG);rainG.connect(AC.destination);rs.start();}catch(e){AC=null;}}
-function burst(freq,dur,vol,type){if(!AC)return;const s=AC.createBufferSource();s.buffer=noiseBuf;const f=AC.createBiquadFilter();f.type=type||'lowpass';f.frequency.value=freq;const g=AC.createGain();g.gain.setValueAtTime(vol,AC.currentTime);g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+dur);s.connect(f);f.connect(g);g.connect(AC.destination);s.start();s.stop(AC.currentTime+dur+.05);}
-function tone(freq,dur,vol,type,f2){if(!AC)return;const o=AC.createOscillator(),g=AC.createGain();o.type=type||'square';o.frequency.setValueAtTime(freq,AC.currentTime);if(f2)o.frequency.linearRampToValueAtTime(f2,AC.currentTime+dur);g.gain.setValueAtTime(vol,AC.currentTime);g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+dur);o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+dur+.05);}
+let AC=null,master=null,noiseBuf=null,eng=null,rainG=null;
+function initAudio(){if(AC)return;try{AC=new(window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=(S.snd||'all')==='all'?1:0;master.connect(AC.destination);const len=AC.sampleRate*2;noiseBuf=AC.createBuffer(1,len,AC.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
+ const o=AC.createOscillator(),o2=AC.createOscillator(),f=AC.createBiquadFilter(),g=AC.createGain();o.type='sawtooth';o2.type='square';f.type='lowpass';f.frequency.value=520;g.gain.value=0;o.connect(f);o2.connect(f);f.connect(g);g.connect(master);o.start();o2.start();eng={o,o2,f,g};
+ const rs=AC.createBufferSource();rs.buffer=noiseBuf;rs.loop=true;const rf=AC.createBiquadFilter();rf.type='lowpass';rf.frequency.value=2600;rainG=AC.createGain();rainG.gain.value=0;rs.connect(rf);rf.connect(rainG);rainG.connect(master);rs.start();}catch(e){AC=null;}}
+function burst(freq,dur,vol,type){if(!AC)return;const s=AC.createBufferSource();s.buffer=noiseBuf;const f=AC.createBiquadFilter();f.type=type||'lowpass';f.frequency.value=freq;const g=AC.createGain();g.gain.setValueAtTime(vol,AC.currentTime);g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+dur);s.connect(f);f.connect(g);g.connect(master);s.start();s.stop(AC.currentTime+dur+.05);}
+function tone(freq,dur,vol,type,f2){if(!AC)return;const o=AC.createOscillator(),g=AC.createGain();o.type=type||'square';o.frequency.setValueAtTime(freq,AC.currentTime);if(f2)o.frequency.linearRampToValueAtTime(f2,AC.currentTime+dur);g.gain.setValueAtTime(vol,AC.currentTime);g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+dur);o.connect(g);g.connect(master);o.start();o.stop(AC.currentTime+dur+.05);}
 Object.assign(G,{burst,tone,initAudio,audioCtx:()=>AC,noiseBuf:()=>noiseBuf});
+G.applySnd=()=>{if(master)master.gain.value=(S.snd||'all')==='all'?1:0;try{if((S.snd||'all')!=='all')speechSynthesis.cancel();}catch(e){}};
+G.vib=p=>{if(S.snd==='off'||S.vib===false)return;try{if(navigator.vibrate)navigator.vibrate(p);}catch(e){}};
 const honk=()=>{tone(420,.55,.07,'square');tone(530,.55,.05,'square');};
 
 /* ───────── input ───────── */
@@ -406,9 +408,10 @@ const staticMap=document.createElement('canvas');staticMap.width=staticMap.heigh
  g.fillStyle='#8a9098';for(let i=0;i<=NB;i++){g.fillRect(roadC(i)*SC-.5,0,1,staticMap.height);g.fillRect(0,roadC(i)*SC-.5,staticMap.width,1);}
  g.font='bold 15px sans-serif';g.textAlign='center';g.textBaseline='middle';
  for(const l of LM){g.fillStyle=l.color;g.beginPath();g.arc(l.x*SC,l.z*SC,7,0,7);g.fill();g.fillStyle='#10171d';g.fillText(l.id.startsWith('home')?'H':l.name[0],l.x*SC,l.z*SC+1);}})();
+G.staticMap=staticMap;G.SC=SC;
 function drawMini(){const g=mctx,w=mini.width,fp=G.focusPos(),h=G.focusH(),sc=SC*(w/180)*.95;
  g.clearRect(0,0,w,w);g.save();g.beginPath();g.arc(w/2,w/2,w/2-2,0,7);g.clip();g.fillStyle='#10171d';g.fillRect(0,0,w,w);
- g.translate(w/2,w/2);g.rotate(h-PI);g.scale(sc/SC,sc/SC);g.translate(-fp.x*SC,-fp.z*SC);g.drawImage(staticMap,0,0);
+ g.translate(w/2,w/2);g.rotate(h-PI);g.scale(sc/SC,sc/SC);g.translate(-fp.x*SC,-fp.z*SC);g.drawImage(staticMap,0,0);if(G.mapOverlay)G.mapOverlay(g,SC);
  for(const m of G.markers){const x=m.x*SC,z=m.z*SC;g.fillStyle=m.color||'#fff';g.strokeStyle='#000';g.lineWidth=2;g.beginPath();g.arc(x,z,(m.big?9:6),0,7);g.fill();g.stroke();}
  g.restore();
  g.save();g.translate(w/2,w/2);g.fillStyle='#4fd1e8';g.strokeStyle='#071016';g.lineWidth=3;g.beginPath();g.moveTo(0,-14);g.lineTo(10,11);g.lineTo(0,6);g.lineTo(-10,11);g.closePath();g.stroke();g.fill();g.restore();}
@@ -430,7 +433,7 @@ function say(text,speak,lang,you){const e=$('sub');if(!text&&!you)return;e.inner
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 G.say=say;
 let voices=[];const loadV=()=>{try{voices=speechSynthesis.getVoices();}catch(e){}};if('speechSynthesis'in window){loadV();speechSynthesis.onvoiceschanged=loadV;}
-function tts(text,lang){if(!('speechSynthesis'in window))return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang=lang;
+function tts(text,lang){if(!('speechSynthesis'in window))return;if(S.snd&&S.snd!=='all')return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang=lang;
  const base=lang.slice(0,2),c=voices.filter(v=>v.lang.toLowerCase().startsWith(base));const v=c.find(x=>/female|zira|heera|neerja|swara|google/i.test(x.name))||c[0];if(v)u.voice=v;u.rate=.98;u.pitch=1.1;u.onstart=()=>{ttsBusy=true;ttsT=performance.now();stopRec();};const done=()=>{ttsBusy=false;if(wantListen)setTimeout(startRec,450);};u.onend=done;u.onerror=done;speechSynthesis.speak(u);}catch(e){ttsBusy=false;}}
 let ttsBusy=false,ttsT=0;
 let rec=null,listening=false,wantListen=false,pendingText='';const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -483,20 +486,59 @@ PLACES (ids): home, petrol (Petrol Pump), hospital, police (Police Station), baz
 RULES: Combine actions naturally, e.g. "aage jaake dekho kya hai" -> speed 30, wait 3, stop, look. "jao jaldi aage" -> speed 70. "left le lo" -> turn left. Keep cruising speed sensible (max ~90). After the player says stop/ruko always include {"a":"stop"}. If asked who you are: you are Saras. If something is impossible, say so kindly in 'say' with actions [].
 ${G.promptExtras.join('\n')}`;}
 async function fetchT(url,opt,ms){const ac=new AbortController(),t=setTimeout(()=>ac.abort(),ms||10000);try{const r=await fetch(url,Object.assign({signal:ac.signal},opt));if(!r.ok)throw new Error(r.status+' '+(await r.text()).slice(0,140));return await r.json();}finally{clearTimeout(t);}}
-const CALL={
- async groq(sys,msgs){const j=await fetchT('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+S.keys.groq},body:JSON.stringify({model:S.models.groq,messages:[{role:'system',content:sys},...msgs],temperature:.35,max_tokens:500,response_format:{type:'json_object'}})},9000);return j.choices[0].message.content;},
- async openrouter(sys,msgs){const j=await fetchT('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+S.keys.openrouter,'X-Title':'Saras City'},body:JSON.stringify({model:S.models.openrouter,messages:[{role:'system',content:sys},...msgs],temperature:.35,max_tokens:500})},14000);return j.choices[0].message.content;},
- async gemini(sys,msgs,img){const contents=msgs.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]}));
-  if(img)contents[contents.length-1].parts.push({inlineData:{mimeType:'image/jpeg',data:img}});
-  const j=await fetchT(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(S.models.gemini)}:generateContent?key=${encodeURIComponent(S.keys.gemini)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({systemInstruction:{parts:[{text:sys}]},contents,generationConfig:{temperature:.35,maxOutputTokens:600,responseMimeType:'application/json'}})},11000);
-  return j.candidates[0].content.parts.map(p=>p.text||'').join('');}};
+const AIM={cache:{},pick:{}};G.aiInfo={};
+const PNAME={groq:'Groq',gemini:'Gemini',openrouter:'OpenRouter'};
+const rank=(id,pf)=>{for(let i=0;i<pf.length;i++)if(pf[i].test(id))return i;return pf.length;};
+G.setAIBadge=t=>{const e=$('aib');if(e)e.textContent=t;};
+async function listModels(p){if(AIM.cache[p])return AIM.cache[p];let ids=[];
+ if(p==='groq'){const j=await fetchT('https://api.groq.com/openai/v1/models',{headers:{Authorization:'Bearer '+S.keys.groq}},8000);
+  ids=(j.data||[]).map(m=>m.id).filter(id=>!/whisper|guard|tts|playai|embed|orpheus|safeguard|compound/i.test(id));
+  const pf=[/llama-3\.3-70b/,/llama-3\.1-8b-instant/,/llama-4/,/gpt-oss-20b/,/gpt-oss-120b/,/qwen/,/llama/];ids.sort((a,b)=>rank(a,pf)-rank(b,pf));}
+ else if(p==='gemini'){const j=await fetchT('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key='+encodeURIComponent(S.keys.gemini),{},8000);
+  const sc=id=>{const v=parseFloat((id.match(/gemini-(\d+(?:\.\d+)?)/)||[0,0])[1])||0,tier=/flash-lite/.test(id)?1:/flash/.test(id)?3:/pro/.test(id)?2:0;return tier*100+v*10-(/preview|exp|latest/.test(id)?25:0);};
+  ids=(j.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')).map(m=>String(m.name).replace('models/','')).filter(id=>/^gemini/.test(id)&&!/embedding|tts|image|live|audio|robotics|computer|vision|nano|learnlm/i.test(id));
+  ids.sort((a,b)=>sc(b)-sc(a));}
+ else{const j=await fetchT('https://openrouter.ai/api/v1/models',{},10000);
+  ids=(j.data||[]).filter(m=>/:free$/.test(m.id)||(m.pricing&&+m.pricing.prompt===0&&+m.pricing.completion===0)).map(m=>m.id).filter(id=>!/vision|image|audio|embed|moderation|lyria|veo|-vl|safeguard/i.test(id));
+  const pf=[/llama-3\.3/,/gpt-oss/,/qwen/,/gemma/,/mistral/,/deepseek/,/llama/];ids.sort((a,b)=>rank(a,pf)-rank(b,pf));}
+ AIM.cache[p]=ids.slice(0,8);return AIM.cache[p];}
+async function candidates(p){const m=(S.models[p]||'').trim();if(m&&m!=='auto')return[m];if(AIM.pick[p])return[AIM.pick[p]];return await listModels(p);}
+async function callModel(p,model,sys,msgs,img){
+ if(p==='gemini'){const contents=msgs.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]}));if(img)contents[contents.length-1].parts.push({inlineData:{mimeType:'image/jpeg',data:img}});
+  const url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent?key='+encodeURIComponent(S.keys.gemini);
+  const body=gc=>JSON.stringify({systemInstruction:{parts:[{text:sys}]},contents,generationConfig:gc});let j;
+  try{j=await fetchT(url,{method:'POST',headers:{'Content-Type':'application/json'},body:body({temperature:.35,maxOutputTokens:700,responseMimeType:'application/json'})},12000);}
+  catch(e){if(/\b400\b/.test(e.message)&&/mime|json|schema/i.test(e.message))j=await fetchT(url,{method:'POST',headers:{'Content-Type':'application/json'},body:body({temperature:.35,maxOutputTokens:700})},12000);else throw e;}
+  return j.candidates[0].content.parts.map(x=>x.text||'').join('');}
+ const url=p==='groq'?'https://api.groq.com/openai/v1/chat/completions':'https://openrouter.ai/api/v1/chat/completions',hdr={'Content-Type':'application/json',Authorization:'Bearer '+S.keys[p]};
+ if(p==='openrouter')hdr['X-Title']='Saras City';
+ const base={model,messages:[{role:'system',content:sys},...msgs],temperature:.35,max_tokens:600};let j;
+ try{j=await fetchT(url,{method:'POST',headers:hdr,body:JSON.stringify(p==='groq'?Object.assign({response_format:{type:'json_object'}},base):base)},p==='groq'?10000:15000);}
+ catch(e){if(p==='groq'&&/\b400\b/.test(e.message)&&/response_format|json/i.test(e.message))j=await fetchT(url,{method:'POST',headers:hdr,body:JSON.stringify(base)},10000);else throw e;}
+ return j.choices[0].message.content;}
+function shortErr(e){const m=String(e&&e.message||e);if(/\b401\b|\b403\b|api key|unauthor|permission/i.test(m))return 'key galat ya band hai';if(/\b429\b|quota|rate/i.test(m))return 'limit khatam — thori der baad';if(/abort/i.test(m))return 'jawab der se aaya (timeout)';if(/failed to fetch|network/i.test(m))return 'internet ya browser ne block kiya';if(/\b404\b|not found|decommission/i.test(m))return 'model nahi mila';return m.slice(0,80);}
+async function callProvider(p,sys,msgs,img){const cand=await candidates(p);if(!cand.length)throw new Error('koi model nahi mila');let last=null;
+ for(const m of cand.slice(0,p==='openrouter'?5:3)){try{const t=await callModel(p,m,sys,msgs,img);AIM.pick[p]=m;G.aiInfo[p]={ok:true,model:m};return t;}
+  catch(e){last=e;const msg=String(e&&e.message||e);G.aiInfo[p]={ok:false,model:m,err:shortErr(e)};if(AIM.pick[p]===m)delete AIM.pick[p];
+   if(/\b401\b|\b403\b|api key|unauthor|permission/i.test(msg))throw e;if(/\b429\b|quota|rate/i.test(msg)&&p!=='openrouter')throw e;if(/abort|failed to fetch|network/i.test(msg))throw e;}}
+ throw last;}
+G.testAI=async function(onLine){const out=[];for(const p of['groq','gemini','openrouter']){
+  if(!S.keys[p]){out.push('➖ '+PNAME[p]+': key nahi daali');}
+  else{const t0=performance.now();AIM.cache[p]=null;delete AIM.pick[p];
+   try{await callProvider(p,'Reply with JSON only: {"say":"ok"}',[{role:'user',content:'ping'}]);out.push('✅ '+PNAME[p]+' chal raha hai — '+G.aiInfo[p].model+' ('+Math.round(performance.now()-t0)+' ms)');}
+   catch(e){out.push('❌ '+PNAME[p]+': '+shortErr(e));}}
+  if(onLine)onLine(out.slice());}
+ return out;};
+G._ai={listModels,callProvider,candidates,shortErr,AIM};
 function parseJSON(raw){try{const s=raw.indexOf('{'),e=raw.lastIndexOf('}');const j=JSON.parse(raw.slice(s,e+1));return j&&typeof j==='object'?j:null;}catch(e){return null;}}
 let lastSrc='';
-async function think(text,opt){opt=opt||{};const sys=buildSystem(),user=`STATE: ${JSON.stringify(stateForLLM())}\nPLAYER: ${text}`,msgs=[...hist.slice(-8),{role:'user',content:user}];
+async function think(text,opt){opt=opt||{};if(S.mode==='offline')return null;const sys=buildSystem(),user=`STATE: ${JSON.stringify(stateForLLM())}\nPLAYER: ${text}`,msgs=[...hist.slice(-8),{role:'user',content:user}];
  const order=(opt.order||['groq','gemini','openrouter']).filter(p=>S.keys[p]);
- for(const p of order){try{const raw=await CALL[p](sys,msgs,opt.img);const j=parseJSON(raw);if(j){hist.push({role:'user',content:'PLAYER: '+text},{role:'assistant',content:raw.slice(0,420)});if(hist.length>16)hist.splice(0,hist.length-16);lastSrc=p;return j;}}
-  catch(e){console.warn('LLM '+p+' failed',e);toast(p+' fail — agla try kar raha hoon',1500);}}
- return null;}
+ for(const p of order){try{const raw=await callProvider(p,sys,msgs,opt.img),j=parseJSON(raw);
+   if(j){hist.push({role:'user',content:'PLAYER: '+text},{role:'assistant',content:raw.slice(0,420)});if(hist.length>16)hist.splice(0,hist.length-16);lastSrc=p;G.lastAIError='';G.setAIBadge('🧠 '+PNAME[p]);return j;}
+   G.aiInfo[p]={ok:false,err:'jawab samajh nahi aaya'};}
+  catch(e){console.warn('LLM '+p+' failed',e);G.lastAIError=PNAME[p]+': '+shortErr(e);toast(G.lastAIError,2800);}}
+ G.setAIBadge(order.length?'⚠ Offline (AI fail)':'📴 Offline');return null;}
 async function handle(text){text=(text||'').trim();if(!text||busyThink)return;busyThink=true;G.userLang=isEn(text)?'en':'ur';say('',null,null,text);$('think').classList.add('on');
  let plan=null;try{plan=await think(text);}catch(e){}
  $('think').classList.remove('on');if(!plan){plan=offline(text);lastSrc='offline';}
@@ -613,10 +655,14 @@ G.boot=function(){
  const tb=$('typebar');$('bType').addEventListener('click',()=>{tb.classList.toggle('on');if(tb.classList.contains('on'))$('txt').focus();});
  const send=()=>{const v=$('txt').value.trim();if(v){$('txt').value='';handle(v);}};$('bSend').addEventListener('click',send);$('txt').addEventListener('keydown',e=>{if(e.key==='Enter')send();e.stopPropagation();});
  const st=$('settings');$('bSet').addEventListener('click',()=>{$('kGroq').value=S.keys.groq;$('kGem').value=S.keys.gemini;$('kOr').value=S.keys.openrouter;$('mGroq').value=S.models.groq;$('mGem').value=S.models.gemini;$('mOr').value=S.models.openrouter;
-  $('sRec').value=S.rec;$('cMic').checked=S.mic;$('cTts').checked=S.tts;$('sQ').value=S.quality;$('cAuto').checked=S.autoWeather;$('cAlways').checked=S.always;$('cWake').checked=S.wake;$('cChat').checked=S.chatty;st.classList.add('on');});
+  $('sRec').value=S.rec;$('cMic').checked=S.mic;$('cTts').checked=S.tts;$('sQ').value=S.quality;$('cAuto').checked=S.autoWeather;$('cAlways').checked=S.always;$('cWake').checked=S.wake;$('cChat').checked=S.chatty;$('sSnd').value=S.snd||'all';$('cVib').checked=S.vib!==false;$('sMode').value=S.mode||'online';st.classList.add('on');});
  $('bCancel').addEventListener('click',()=>st.classList.remove('on'));
+ const SNDI={all:'🔊',vib:'📳',off:'🔇'},syncSnd=()=>{$('bSnd').textContent=SNDI[S.snd||'all'];};
+ $('bSnd').addEventListener('click',()=>{initAudio();const o=['all','vib','off'];S.snd=o[(o.indexOf(S.snd||'all')+1)%3];G.saveS();G.applySnd();syncSnd();toast(S.snd==='all'?'🔊 Sab awaazein on':S.snd==='vib'?'📳 Sirf vibration':'🔇 Sab band',1400);if(S.snd!=='off')G.vib(40);});syncSnd();G.setAIBadge(S.mode==='offline'?'📴 Offline':(S.keys.groq||S.keys.gemini||S.keys.openrouter)?'🧠 AI':'📴 Offline');
+ $('bTest').addEventListener('click',async()=>{const o=$('aiout');o.textContent='Test ho raha hai… (keys pehle Save kar lo)';S.keys={groq:$('kGroq').value.trim(),gemini:$('kGem').value.trim(),openrouter:$('kOr').value.trim()};S.models={groq:$('mGroq').value.trim(),gemini:$('mGem').value.trim(),openrouter:$('mOr').value.trim()};
+  try{await G.testAI(l=>{o.textContent=l.join('\n');});}catch(e){o.textContent='Test error: '+e.message;}});
  $('bSave').addEventListener('click',()=>{S.keys={groq:$('kGroq').value.trim(),gemini:$('kGem').value.trim(),openrouter:$('kOr').value.trim()};S.models={groq:$('mGroq').value.trim()||DEF.models.groq,gemini:$('mGem').value.trim()||DEF.models.gemini,openrouter:$('mOr').value.trim()||DEF.models.openrouter};
-  const q0=S.quality;S.rec=$('sRec').value;S.mic=$('cMic').checked;S.tts=$('cTts').checked;S.quality=$('sQ').value;S.autoWeather=$('cAuto').checked;S.always=$('cAlways').checked;S.wake=$('cWake').checked;S.chatty=$('cChat').checked;G.saveS();applyMicUI();if(S.mic&&S.always&&G.started)setListen(true);else if(!S.always)setListen(false);st.classList.remove('on');
+  const q0=S.quality;S.rec=$('sRec').value;S.mic=$('cMic').checked;S.tts=$('cTts').checked;S.quality=$('sQ').value;S.autoWeather=$('cAuto').checked;S.always=$('cAlways').checked;S.wake=$('cWake').checked;S.chatty=$('cChat').checked;S.snd=$('sSnd').value;S.vib=$('cVib').checked;S.mode=$('sMode').value;AIM.cache={};AIM.pick={};G.applySnd();syncSnd();G.setAIBadge(S.mode==='offline'?'📴 Offline':'🧠 AI');G.saveS();applyMicUI();if(S.mic&&S.always&&G.started)setListen(true);else if(!S.always)setListen(false);st.classList.remove('on');
   if(q0!==S.quality){toast('Graphics change ke liye page reload karo',2600);}else toast('Settings save ho gayi');});
  $('bWipe').addEventListener('click',()=>{if(confirm('Game save reset karein? (API keys rehengi)')){try{localStorage.removeItem('saras_save');}catch(e){}location.reload();}});
  window.addEventListener('keydown',e=>{if(e.target&&e.target.tagName==='INPUT')return;const k=e.key.toLowerCase();keys[k]=true;
