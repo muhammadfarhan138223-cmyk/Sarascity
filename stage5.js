@@ -39,7 +39,7 @@ function fpsTick(dt){const now=performance.now();frames++;acc+=(now-last)/1000;l
   if(autoRes&&warm<=0){if(fps<27){lowN++;highN=0;if(lowN>=2&&scale>.46){scale-=.08;applyScale();lowN=0;}}else if(fps>56){highN++;lowN=0;if(highN>=3&&scale<maxScale){scale=Math.min(maxScale,scale+.04);applyScale();highN=0;}}else{lowN=0;highN=0;}}}}
 
 /* ───────── 3. action: nitro, speed lines, smoke ───────── */
-let fuel=100,held=false,act=false;
+let fuel=100,held=false,nitroT=0;
 const fx=document.createElement('div');fx.className='hudx';
 fx.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:4;opacity:0;background:repeating-conic-gradient(from 0deg at 50% 50%,rgba(255,255,255,0) 0deg 3deg,rgba(255,255,255,.55) 3deg 3.7deg,rgba(255,255,255,0) 3.7deg 7deg);-webkit-mask-image:radial-gradient(circle at 50% 50%,transparent 40%,#000 85%);mask-image:radial-gradient(circle at 50% 50%,transparent 40%,#000 85%)';document.body.appendChild(fx);
 let fxOp=0;
@@ -50,9 +50,10 @@ for(let i=0;i<NP;i++){const sp=new T.Sprite(new T.SpriteMaterial({map:puffTex,tr
 function emit(x,y,z,color,size,life,rise,alpha){const p=puffs.find(q=>q.life<=0);if(!p)return;p.life=p.max=life;p.s0=size;p.rise=rise;p.a=alpha;p.sp.position.set(x,y,z);p.sp.material.color.set(color);p.sp.visible=true;}
 let emitT=0,wasOn=false;
 function actionTick(dt){
+ const act=nitroT>0;nitroT-=dt;
  const on=(held||act)&&fuel>2&&G.mode==='car'&&!G.indoor&&car.vf>3;
  if(on){if(!car._nb||car._nb.shape!==car.shape)car._nb={m:car.maxV||42,a:car.acc||1,shape:car.shape};car.maxV=car._nb.m*1.45;car.acc=car._nb.a*2;fuel=Math.max(0,fuel-35*dt);G.camState.fovAdd=Math.min(11,G.camState.fovAdd+dt*40);G.camState.shake=Math.max(G.camState.shake,.06);
-  if(!wasOn)G.burst(1500,.45,.12,'bandpass');}
+  if(!wasOn){G.burst(1500,.45,.12,'bandpass');G.vib(70);}}
  else{if(car._nb){car.maxV=car._nb.m;car.acc=car._nb.a;car._nb=null;}G.camState.fovAdd=Math.max(0,G.camState.fovAdd-dt*30);fuel=Math.min(100,fuel+9*dt);}
  wasOn=on;bar.firstChild.style.width=fuel+'%';
  const kmh=Math.abs(car.vf)*3.6,want=clamp((kmh-90)/110,0,.5)*(LOW?.7:1)+(on?.3:0);if(Math.abs(want-fxOp)>.02){fxOp=want;fx.style.opacity=String(want);}
@@ -64,8 +65,8 @@ function actionTick(dt){
 
 /* ───────── hooks ───────── */
 G.hooks.update.push(dt=>{fpsTick(dt);actionTick(dt);});
-G.actions.nitro=a=>{let t=0;const s=clamp(+a.secs||2.5,.5,6);return{name:'nitro',update(dt){act=true;t+=dt;if(t>=s){act=false;return true;}return false;},cancel(){act=false;}};};
-G.promptExtras.push('NITRO: {"a":"nitro","secs":3} gives a speed boost (use together with {"a":"drive","throttle":1,"steer":0,"secs":3} for a manual sprint; the autopilot cruise speed is capped). Great for races, chases and escaping police.');
+G.actions.nitro=a=>{nitroT=clamp(+a.secs||2.5,.5,6);return{name:'nitro',update:()=>true};};
+G.promptExtras.push('NITRO: {"a":"nitro","secs":3} gives a speed boost (put it BEFORE a {"a":"drive","throttle":1,"steer":0,"secs":3} action so they run together; autopilot cruise speed is capped, so use drive for sprints). Great for races, chases and escaping police.');
 G.hooks.ready.push(()=>{
  try{mergeCity();}catch(e){console.warn('merge error',e);}
  applyScale();
