@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#0a0f14">
 <title>Saras City</title>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <style>
 :root{--ink:#e9eef2;--mut:#93a4b3;--amber:#ffb224;--cy:#4fd1e8;--red:#ff6b5e;--glass:rgba(10,16,22,.62);--ln:rgba(255,255,255,.16)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
@@ -86,6 +88,25 @@ body.clear #restore{display:block}
 #fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .45s;z-index:15}
 #fade.on{opacity:1}
 #loadmsg{position:fixed;left:12px;bottom:6px;font-size:11px;color:var(--mut);z-index:40}
+
+/* foot controls, pads, map, missions */
+body.foot #steer,body.foot #pedals{display:none}
+#joyzone,#lookpad{position:fixed;z-index:0;touch-action:none;background:transparent}
+#joyzone{left:0;bottom:0;width:46%;height:62%;display:none}
+#lookpad{right:0;bottom:0;width:56%;height:80%}
+body.foot #joyzone{display:block}
+#joy{position:fixed;left:max(30px,env(safe-area-inset-left));bottom:max(34px,env(safe-area-inset-bottom));width:124px;height:124px;border-radius:50%;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.25);display:none;pointer-events:none;z-index:2}
+body.foot #joy{display:block}
+#joy i{position:absolute;left:35px;top:35px;width:54px;height:54px;border-radius:50%;background:rgba(255,178,36,.55);border:2px solid rgba(255,255,255,.5)}
+.mapwrap{width:min(96vw,740px);padding:10px;text-align:center}
+#mapc{border-radius:10px;touch-action:none;background:#10171d;max-width:100%}
+.mapbar{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.maphint{font-size:12px;color:var(--mut);margin-top:6px}
+.mrow{padding:10px 12px;border:1px solid var(--ln);border-radius:12px;margin:8px 0;text-align:left}
+.mrow b{font-size:15px}.mrow small{display:block;color:var(--mut);margin-top:3px;font-size:12.5px;line-height:1.4}.mrow .st{float:right;font-size:13px}
+.mrow.cur{border-color:var(--amber)}.mrow.lock{opacity:.5}.mrow .acts{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
+#aib{font-size:12.5px}
+#aiout{font-size:13px;line-height:1.55;color:var(--ink);white-space:pre-wrap;margin:8px 0 0;-webkit-user-select:text;user-select:text}
 </style>
 </head>
 <body>
@@ -95,12 +116,15 @@ body.clear #restore{display:block}
 
 <div id="stats" class="hudx">
   <div id="statrow">
+    <button class="glass ib" id="bMis" title="Missions" aria-label="Missions">📋</button>
+    <button class="glass ib" id="bSnd" title="Sound" aria-label="Sound">🔊</button>
     <button class="glass ib" id="bType" title="Type command" aria-label="Type command">⌨</button>
     <button class="glass ib" id="bClear" title="Clear screen" aria-label="Clear screen">👁</button>
     <button class="glass ib" id="bSet" title="Settings" aria-label="Settings">⚙</button>
   </div>
   <div class="glass pill" id="clock">🕒 --:--</div>
   <div class="glass pill" id="wx">☀ Clear</div>
+  <div class="glass pill" id="aib">🧠 AI</div>
   <div class="glass pill" id="xstats" style="display:none"></div>
 </div>
 
@@ -149,13 +173,21 @@ body.clear #restore{display:block}
     <label>OpenRouter key (aakhri backup)</label>
     <input type="password" id="kOr" placeholder="sk-or-…" autocomplete="off">
     <div class="two">
-      <div><label>Groq model</label><input type="text" id="mGroq"></div>
-      <div><label>Gemini model</label><input type="text" id="mGem"></div>
+      <div><label>Groq model</label><input type="text" id="mGroq" placeholder="auto (khud chun lega)"></div>
+      <div><label>Gemini model</label><input type="text" id="mGem" placeholder="auto (khud chun lega)"></div>
     </div>
     <label>OpenRouter model</label>
-    <input type="text" id="mOr">
-    <p style="margin-top:6px">Agar koi model ka naam purana ho jaye (error aaye) to yahan naya naam likh do.</p>
+    <input type="text" id="mOr" placeholder="auto (khud chun lega)">
+    <p style="margin-top:6px">Model naam <b>khali chhodo</b> — game khud provider se chalne wala model dhoondta hai. Sirf tab likho jab kisi khaas model ko chalana ho.</p>
+    <div class="row" style="justify-content:flex-start;margin-top:4px"><button class="btn" id="bTest">🧪 AI test karo</button></div>
+    <div id="aiout"></div>
+    <h3>Mode</h3>
+    <label>Online = AI se samajhta hai · Offline = bina internet, sirf simple commands</label>
+    <select id="sMode"><option value="online">Online (AI + internet)</option><option value="offline">Offline (bina AI)</option></select>
     <h3>Awaaz</h3>
+    <label>Sound / vibration</label>
+    <select id="sSnd"><option value="all">🔊 Sab awaazein on</option><option value="vib">📳 Sirf vibration (awaaz band)</option><option value="off">🔇 Sab band</option></select>
+    <div class="chk"><input type="checkbox" id="cVib"><label for="cVib" style="margin:0;color:var(--ink);font-size:15px">Vibration (crash, goli, mission)</label></div>
     <label>Mic ki zubaan (jo tum bolte ho)</label>
     <select id="sRec">
       <option value="hi-IN">Hindi/Urdu (hi-IN) — Roman Urdu ke liye best</option>
@@ -181,6 +213,17 @@ body.clear #restore{display:block}
   </div>
 </div>
 
+
+<div class="modal" id="bigmap"><div class="mapwrap glass">
+  <canvas id="mapc"></canvas>
+  <div class="mapbar"><button class="btn" id="mZin">＋</button><button class="btn" id="mZout">－</button><button class="btn" id="mMe">📍 Main</button><button class="btn" id="mClr">❌ Marker hatao</button><button class="btn pri" id="mGo">🚗 Saras le chalo</button><button class="btn" id="mClose">Band</button></div>
+  <div class="maphint">Map par <b>tap</b> karo = marker lagega aur sadak par neeli roshni ka raasta dikhega. Ungli se khinch kar map hila sakte ho.</div>
+</div></div>
+<div class="modal" id="mlist"><div class="card glass">
+  <h2>Missions</h2><p>Mission ka marker map par aur sadak par roshni se dikhega.</p>
+  <div id="mlistbody"></div>
+  <div class="row"><button class="btn" id="mlClose">Band</button></div>
+</div></div>
 <div class="modal" id="start">
   <div class="card glass">
     <h1>SARAS CITY</h1>
@@ -201,8 +244,22 @@ body.clear #restore{display:block}
 <script src="stage4.js" onerror="void 0"></script>
 <script src="stage5.js" onerror="void 0"></script>
 <script src="stage6.js" onerror="void 0"></script>
-<script src="stage7.js" onerror="void 0"></script>
+  
 <script>
+  (function(){ /* app icon + install manifest made in code (no PNG files needed) */
+    try{
+      function icon(n){var c=document.createElement('canvas');c.width=c.height=n;var g=c.getContext('2d'),k=n/192;
+        var gr=g.createLinearGradient(0,0,0,n);gr.addColorStop(0,'#0e161d');gr.addColorStop(1,'#25323d');g.fillStyle=gr;g.fillRect(0,0,n,n);
+        g.strokeStyle='#ffb224';g.lineWidth=7*k;g.beginPath();g.arc(n/2,n/2,n*.38,0,7);g.stroke();
+        g.fillStyle='#e9eef2';g.fillRect(n*.23,n*.53,n*.54,n*.17);g.fillStyle='#78c8e6';g.fillRect(n*.35,n*.42,n*.3,n*.12);
+        g.fillStyle='#14141a';g.beginPath();g.arc(n*.33,n*.71,n*.07,0,7);g.arc(n*.67,n*.71,n*.07,0,7);g.fill();return c.toDataURL('image/png');}
+      var i192=icon(192),i512=icon(512),base=location.href.split('#')[0].split('?')[0].replace(/[^\/]*$/,'');
+      var l=document.createElement('link');l.rel='icon';l.href=i192;document.head.appendChild(l);
+      var m={name:'Saras City',short_name:'Saras City',start_url:base+'index.html',scope:base,display:'fullscreen',orientation:'landscape',background_color:'#0a0f14',theme_color:'#0a0f14',icons:[{src:i192,sizes:'192x192',type:'image/png',purpose:'any'},{src:i512,sizes:'512x512',type:'image/png',purpose:'any'}]};
+      var lm=document.createElement('link');lm.rel='manifest';lm.href='data:application/manifest+json,'+encodeURIComponent(JSON.stringify(m));document.head.appendChild(lm);
+    }catch(e){}
+  })();
+  if('serviceWorker' in navigator&&location.protocol==='https:'){navigator.serviceWorker.register('sw.js').catch(function(){});}
   if(window.G&&G.boot){G.boot();}else{document.getElementById('loadmsg').textContent='core.js ya three.js load nahi hua — internet aur file names check karo.';}
 </script>
 </body>
