@@ -12,7 +12,7 @@ const inst=(fn,name)=>a=>{fn(a||{});return{name,update:()=>true};};
 const SV=G.save=Object.assign({money:500,xp:0,mi:0,home:'home',owned:['home']},(()=>{try{return JSON.parse(localStorage.getItem('saras_save')||'{}');}catch(e){return{};}})());
 G.saveGame=()=>{try{localStorage.setItem('saras_save',JSON.stringify(SV));}catch(e){}};
 const lvl=()=>1+Math.floor(Math.sqrt(SV.xp/120));G.level=lvl;
-function statHud(){G.setStat('💰 <b>$'+SV.money+'</b> · Lv <b>'+lvl()+'</b>'+(G.statExtra?G.statExtra():''));}G.statHud=statHud;
+function statHud(){G.setStat('💰 <b>Rs '+SV.money+'</b> · Lv <b>'+lvl()+'</b>'+(G.statExtra?G.statExtra():''));}G.statHud=statHud;
 G.addMoney=n=>{SV.money=Math.max(0,SV.money+n);statHud();};
 G.addXP=n=>{const l=lvl();SV.xp+=n;statHud();if(lvl()>l){G.toast('LEVEL UP! Level '+lvl()+' 🎉',2600);G.tone(660,.15,.07,'triangle');setTimeout(()=>G.tone(990,.25,.07,'triangle'),160);}};
 
@@ -58,7 +58,7 @@ A.walk=a=>G.mode==='foot'?walkAct(a||{}):{name:'noop',update:()=>true};
 
 function footStep(dt){me.auto=null;const man=G.manualInp();let thr=man.thr,st=man.steer,run=runTog||G.keys.shift;
  if(man.active){if(AP.cur||AP.queue.length)G.cancelAll();}else{G.stepQueue(dt);if(me.auto){thr=me.auto.thr;st=me.auto.steer;run=me.auto.run;}}
- me.h+=st*2.5*dt;const sp=thr>0?(run?7:3.4):thr<0?-2:0,nx=me.x+Math.sin(me.h)*sp*dt,nz=me.z+Math.cos(me.h)*sp*dt;
+ me.h+=st*(me.turnRate||2.5)*dt;const sp=thr>0?(run?7:3.4):thr<0?-2:0,nx=me.x+Math.sin(me.h)*sp*dt,nz=me.z+Math.cos(me.h)*sp*dt;
  if(G.indoor)roomMove(nx,nz);else{const r=G.resolve(nx,nz,.42);me.x=clamp(r.x,-40,C.SIZE+40);me.z=clamp(r.z,-40,C.SIZE+40);}
  G.footSpeed=Math.abs(sp);animPerson(me,Math.abs(sp),dt);placePerson(me);
  if(!G.indoor&&homeCD<=0&&sp>0){const l=lm(SV.home);if(Math.hypot(me.x-l.door.x,me.z-l.door.z)<1.8)enterHome();}}
@@ -71,8 +71,8 @@ G.camHook=dt=>{if(G.mode!=='foot')return false;const fx=Math.sin(me.h),fz=Math.c
 const D=[[1,0],[0,1],[-1,0],[0,-1]],HD=[PI/2,0,-PI/2,PI],NBn=C.NB,inB=(i,j)=>i>=0&&j>=0&&i<=NBn&&j<=NBn,lo=(d,L)=>[D[d][1]*L,-D[d][0]*L];
 const trafficGroup=new T.Group(),pedGroup=new T.Group();scene.add(trafficGroup,pedGroup);
 const npcs=G.npcs=[],npcCircles=[];
-function spawnNpc(){const n=G.buildCar(pick(['#2f6fb5','#e8e8e8','#222','#b8b8b8','#c28a1c','#2f8f5b','#8a2f5b','#d9d9a0']),{shape:pick(['sedan','hatch','suv','sports']),lights:false});
- trafficGroup.add(n.mesh);n.npc=true;n.vmax=rnd(9,14);n.v=0;n.stuck=0;n.ghost=0;let i,j,d,k=0;
+function spawnNpc(){const n=G.buildCar(pick(['#2f6fb5','#e8e8e8','#222','#b8b8b8','#c28a1c','#2f8f5b','#8a2f5b','#d9d9a0']),{shape:pick(G.npcShapes||['sedan','hatch','suv','sports']),lights:false});
+ trafficGroup.add(n.mesh);n.npc=true;n.vmax=rnd(9,14)*(n.speedK||1);n.v=0;n.stuck=0;n.ghost=0;let i,j,d,k=0;
  do{i=Math.floor(rnd(0,NBn+1));j=Math.floor(rnd(0,NBn+1));d=Math.floor(rnd(0,4));k++;}while((!inB(i+D[d][0],j+D[d][1])||Math.hypot(roadC(i)-car.x,roadC(j)-car.z)<80)&&k<40);
  n.d=d;n.to=[i+D[d][0],j+D[d][1]];const f=rnd(.15,.85),o=lo(d,3.8);n.x=roadC(i)+D[d][0]*C.P*f+o[0];n.z=roadC(j)+D[d][1]*C.P*f+o[1];n.h=HD[d];npcs.push(n);return n;}
 const npcTarget=n=>{const o=lo(n.d,3.8);return{x:roadC(n.to[0])+o[0],z:roadC(n.to[1])+o[1]};};
@@ -92,7 +92,7 @@ G.circleProviders.push(()=>npcCircles);G.npcStep=npcStep;
 const peds=G.peds=[];
 function perim(bx,bz,s){const x0=C.blk0(bx)+1.6,z0=C.blk0(bz)+1.6,L=C.BS-3.2;s=((s%(4*L))+4*L)%(4*L);const k=Math.floor(s/L),u=s-k*L;
  return k===0?[x0+u,z0,PI/2]:k===1?[x0+L,z0+u,0]:k===2?[x0+L-u,z0+L,-PI/2]:[x0,z0+L-u,PI];}
-function spawnPed(){const p=buildPerson(pick(['#c0392b','#2980b9','#27ae60','#f39c12','#8e44ad','#7f8c8d','#16a085','#d35400']),pick(['#2c3e50','#34495e','#5d4037','#455a64']),pick(['#e0ac89','#c68642','#8d5524','#f1c27d']),pick(['#111','#3b2f2f','#6b4b2a']),rnd(.93,1.05));
+function spawnPed(){const p=G.buildPerson(pick(['#c0392b','#2980b9','#27ae60','#f39c12','#8e44ad','#7f8c8d','#16a085','#d35400']),pick(['#2c3e50','#34495e','#5d4037','#455a64']),pick(['#e0ac89','#c68642','#8d5524','#f1c27d']),pick(['#111','#3b2f2f','#6b4b2a']),rnd(.93,1.05));
  pedGroup.add(p.mesh);p.bx=Math.floor(rnd(0,C.NB));p.bz=Math.floor(rnd(0,C.NB));p.s=rnd(0,200);p.dir=Math.random()<.5?1:-1;p.sp=rnd(1.1,1.6);p.down=0;p.ped=true;peds.push(p);}
 function pedStep(dt){for(const p of peds){
  if(p.down>0){p.down-=dt;if(p.down<=0){p.mesh.rotation.x=0;p.mesh.position.y=0;p.bx=Math.floor(rnd(0,C.NB));p.bz=Math.floor(rnd(0,C.NB));p.s=rnd(0,200);}continue;}
@@ -130,7 +130,7 @@ Object.assign(G,{enterHome,exitHome});
 function sleepNow(){if(!G.indoor){G.toast('Ghar ke andar jao, phir so sakte ho');return;}
  G.fade(()=>{G.time=7;me.hp=100;car.hp=100;G.setWeather(pick(['clear','clear','cloudy','rain']),200);G.saveGame();G.toast('Subah ho gayi ☀ — health aur gaari theek, game save',2800);setTimeout(()=>G.event('sleep',null,true),600);},700);}
 function changeHome(to){const l=lm(to);if(!l||l.kind!=='house'){G.toast('Aisa ghar nahi hai');return;}
- if(!SV.owned.includes(to)){const price=to==='home2'?4000:12000;if(SV.money<price){G.toast('Paise kam hain — '+l.name+' ka daam $'+price,2800);return;}G.addMoney(-price);SV.owned.push(to);}
+ if(!SV.owned.includes(to)){const price=to==='home2'?4000:12000;if(SV.money<price){G.toast('Paise kam hain — '+l.name+' ka daam Rs '+price,2800);return;}G.addMoney(-price);SV.owned.push(to);}
  SV.home=to;G.saveGame();homeMk.x=l.stop.x;homeMk.z=l.stop.z;
  if(G.indoor)G.fade(()=>{buildRoom(to);parkCarAtHome(l);me.x=ROOM.cx;me.z=ROOM.cz+2.8;me.h=PI;});
  G.toast('Ab aapka ghar: '+l.name,2400);}
@@ -151,7 +151,7 @@ const ST=G.stepTypes={
   update(s,st){if(st.veh==='car'&&G.mode!=='car')return null;const f=G.focusPos();return Math.hypot(f.x-s.t.x,f.z-s.t.z)<(st.radius||14)?'done':null;},
   end(s){if(s.bc)s.bc.parent.remove(s.bc);const i=G.markers.indexOf(s.mk);if(i>=0)G.markers.splice(i,1);}},
  pickup:{start(s,st){s.t=tgtOf(st);s.bc=G.beacon(s.t.x,s.t.z,'#ffd23f',130,2.4);s.mk={id:'obj',x:s.t.x,z:s.t.z,color:'#ffd23f',big:1};G.markers.push(s.mk);
-   s.p=buildPerson('#e67e22','#2c3e50','#e0ac89','#222');s.p.x=s.t.x+1.5;s.p.z=s.t.z-9.2;s.p.h=PI;scene.add(s.p.mesh);placePerson(s.p);},
+   s.p=G.buildPerson('#e67e22','#2c3e50','#e0ac89','#222');s.p.x=s.t.x+1.5;s.p.z=s.t.z-9.2;s.p.h=PI;scene.add(s.p.mesh);placePerson(s.p);},
   update(s){if(G.mode==='car'&&Math.hypot(car.x-s.t.x,car.z-s.t.z)<11&&Math.abs(car.vf)<2.6){G.toast('Passenger baith gaya 🚖');G.tone(780,.12,.06,'triangle');return'done';}return null;},
   end(s){scene.remove(s.p.mesh);if(s.bc)s.bc.parent.remove(s.bc);const i=G.markers.indexOf(s.mk);if(i>=0)G.markers.splice(i,1);}}};
 const M=G.M={active:null,step:0,s:null,left:0,cd:18};
@@ -162,7 +162,7 @@ function beginStep(){const d=M.active,st=d.steps[M.step],h=ST[st.type];M.s={};if
 function endStep(){if(M.active&&M.active.steps[M.step]){const st=M.active.steps[M.step],h=ST[st.type];if(h&&h.end)h.end(M.s,st);M.s={};}}
 function startMission(d){if(M.active)return false;if(!d){G.toast('Saare missions khatam! 🏆');return false;}clearGiver();M.active=d;M.step=0;M.left=d.time||0;if(d.onStart)d.onStart();beginStep();G.say(d.intro,d.hi||null,d.hi?'hi-IN':null);G.toast('MISSION: '+d.title,2600);return true;}
 function finishMission(ok,why){if(!M.active)return;const d=M.active;endStep();if(d.onEnd)d.onEnd(ok);M.active=null;M.cd=8;
- if(ok){G.addMoney(d.reward.money);G.addXP(d.reward.xp);SV.mi++;G.saveGame();G.toast('MISSION PASSED! +$'+d.reward.money+' · +'+d.reward.xp+' XP',3200);G.tone(784,.12,.07,'triangle');setTimeout(()=>G.tone(1046,.25,.07,'triangle'),140);setTimeout(()=>G.event('mission_pass',null,true),900);}
+ if(ok){G.addMoney(d.reward.money);G.addXP(d.reward.xp);SV.mi++;G.saveGame();G.toast('MISSION PASSED! +Rs '+d.reward.money+' · +'+d.reward.xp+' XP',3200);G.tone(784,.12,.07,'triangle');G.vib([80,50,80,50,220]);setTimeout(()=>G.tone(1046,.25,.07,'triangle'),140);setTimeout(()=>G.event('mission_pass',null,true),900);}
  else{G.toast('Mission fail: '+(why||''),3000);G.burst(300,.4,.2);setTimeout(()=>G.event('mission_fail',null,true),900);}
  G.setMission('');setGiver();}
 G.startMission=startMission;G.finishMission=finishMission;
@@ -183,7 +183,7 @@ function missionStep(dt){M.cd-=dt;
 let tvT2=0;
 G.hooks.update.push(dt=>{
  homeCD-=dt;if(G.mode==='foot')footStep(dt);G.hudHp=G.mode==='foot'?me.hp:null;
- if(!G.indoor){npcCircles.length=0;for(const n of npcs){npcStep(n,dt);const fx=Math.sin(n.h),fz=Math.cos(n.h);npcCircles.push({x:n.x+fx*1.2,z:n.z+fz*1.2,r:1.1,self:n},{x:n.x-fx*1.2,z:n.z-fz*1.2,r:1.1,self:n});}pedStep(dt);}
+ if(!G.indoor){npcCircles.length=0;for(const n of npcs){npcStep(n,dt);const fx=Math.sin(n.h),fz=Math.cos(n.h);npcCircles.push({x:n.x+fx*(n.half||1.2),z:n.z+fz*(n.half||1.2),r:n.cr||1.1,self:n},{x:n.x-fx*(n.half||1.2),z:n.z-fz*(n.half||1.2),r:n.cr||1.1,self:n});}pedStep(dt);}
  else{tvT2-=dt;if(tvMat&&tvT2<=0){tvT2=.6;tvMat.color.set(tvOn?pick(['#4aa3ff','#ff7a59','#7affb2','#c084fc']):'#05070a');}}
  missionStep(dt);});
 
@@ -200,7 +200,7 @@ The player can be IN the car (mode "car") or ON FOOT (mode "foot"); everything i
 {"a":"exit_car"} get out; {"a":"enter_car"} get in (must be within ~7 m; if far, first {"a":"goto","place":"car"} on foot, then enter_car).
 {"a":"walk","dir":"forward|back","secs":N,"run":false}  walk/run on foot.
 {"a":"enter_home"} go inside the active home (must be within ~45 m of it; otherwise goto it first) / {"a":"exit_home"} / {"a":"sleep"} (inside home: skips to morning, heals, saves) / {"a":"tv","on":true} / {"a":"save"}
-{"a":"change_home","to":"home|home2|home3"} moves to another house (home2 costs $4000, home3 $12000, bought once).
+{"a":"change_home","to":"home|home2|home3"} moves to another house (home2 costs Rs 4000, home3 Rs 12000, bought once).
 {"a":"start_mission"} start the next mission now / {"a":"cancel_mission"} / {"a":"missions"} tells the player the mission status.
 Missions: pickup/delivery/taxi/race with timers; yellow beacons mark objectives. If the player asks "kya karun / koi kaam do", suggest or start the next mission.`);
 G.stateExtras.push(()=>{const d=M.active,nd=defs[SV.mi],l=lm(SV.home);return{on_foot:G.mode==='foot',indoors_home:G.indoor,car_dist_m:Math.round(Math.hypot(me.x-car.x,me.z-car.z)),money:SV.money,level:lvl(),active_home:SV.home,home_dist_m:Math.round(Math.hypot(G.focusPos().x-l.x,G.focusPos().z-l.z)),
