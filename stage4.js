@@ -75,7 +75,7 @@ function normalizeCar(gltf,cfg){const root=gltf.scene,wrap=new T.Group();wrap.ad
  root.traverse(o=>{if(!o.isMesh)return;o.castShadow=true;(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{if(m&&m.isMeshStandardMaterial){m.envMap=G.env||null;m.envMapIntensity=cfg.envI||1;m.needsUpdate=true;envMats.push(m);}});});
  return wrap;}
 function loadModels(cfgs){if(!loader){console.warn('GLTFLoader nahi mila — real models skip');return;}
- for(const key of Object.keys(MODELS)){const cfg=Object.assign(MODELS[key],cfgs&&cfgs[key]||{});MODELS[key]=cfg;
+ for(const key of Object.keys(MODELS)){if(key==='person'&&G.pkChars)continue;const cfg=Object.assign(MODELS[key],cfgs&&cfgs[key]||{});MODELS[key]=cfg;
   loader.load(cfg.file,gltf=>{try{
     if(key==='person'){personRoot=gltf.scene;personClips=gltf.animations||[];setupPerson(cfg);}
     else{loaded[key]=normalizeCar(gltf,cfg);for(const c of cars)if(c.shape===key&&c.mesh.parent)attachModel(c);}
