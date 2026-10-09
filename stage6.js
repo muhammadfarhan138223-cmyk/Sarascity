@@ -111,7 +111,7 @@ function objectiveTarget(d){const st=d.steps[G.M.step];if(!st)return null;if(st.
 function openMissions(){const D=G.missions;if(!D){G.toast('Missions Stage 2 mein hain (stage2.js daalo)');return;}const SV=G.save,body=$('mlistbody');body.innerHTML='';
  D.forEach((d,i)=>{const done=i<SV.mi,act=G.M&&G.M.active===d,cur=i===SV.mi&&!act,row=document.createElement('div');row.className='mrow'+((cur||act)?' cur':'')+(i>SV.mi?' lock':'');
   const l=LM.find(x=>x.id===d.giver);
-  row.innerHTML='<span class="st">'+(done?'✅ Ho gaya':act?'▶ Chal raha':cur?'⭐ Agla':'🔒')+'</span><b>'+(i+1)+'. '+d.title+'</b><small>'+d.intro+'</small><small>📍 '+(l?l.name:'')+' · 💰 $'+d.reward.money+' · ⭐ '+d.reward.xp+' XP'+(d.time?' · ⏱ '+Math.round(d.time/6)/10+' min':'')+'</small>';
+  row.innerHTML='<span class="st">'+(done?'✅ Ho gaya':act?'▶ Chal raha':cur?'⭐ Agla':'🔒')+'</span><b>'+(i+1)+'. '+d.title+'</b><small>'+d.intro+'</small><small>📍 '+(l?l.name:'')+' · 💰 Rs '+d.reward.money+' · ⭐ '+d.reward.xp+' XP'+(d.time?' · ⏱ '+Math.round(d.time/6)/10+' min':'')+'</small>';
   if(cur||act){const acts=document.createElement('div');acts.className='acts';
    acts.appendChild(mkBtn('📍 Marker lagao',()=>{const t=act?objectiveTarget(d):(l?l.stop:null);if(t)setWaypoint(t.x,t.z);closeMissions();}));
    if(act)acts.appendChild(mkBtn('❌ Cancel',()=>{G.finishMission(false,'cancel kiya');closeMissions();}));
