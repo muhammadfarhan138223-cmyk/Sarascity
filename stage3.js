@@ -8,7 +8,7 @@ G.stage=3;
 const T=G.T,$=G.$,clamp=G.clamp,wrapA=G.wrapA,PI=Math.PI,rnd=G.rnd,pick=G.pick,scene=G.scene,car=G.car,me=G.me,C=G.C,roadC=C.roadC,A=G.actions,LM=G.landmarks,SV=G.save,ST=G.stepTypes,M=G.M;
 const lm=id=>LM.find(l=>l.id===id),inst=(fn,name)=>a=>{fn(a||{});return{name,update:()=>true};};
 if(SV.pistol==null)SV.pistol=false;if(SV.ammo==null)SV.ammo=0;if(!SV.car)SV.car={shape:'sedan',color:'#c9372c',owned:['sedan']};
-let weapon='fists',atkCD=0,hurtT=0,repCD=0,healCD=0;
+let weapon='fists',atkCD=0,hurtT=0,repCD=0,healCD=0;G.getWeapon=()=>weapon;
 
 /* ───────── hurt overlay ───────── */
 const hurtEl=document.createElement('div');hurtEl.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:9;transition:box-shadow .25s;box-shadow:inset 0 0 140px 30px rgba(255,40,40,0)';document.body.appendChild(hurtEl);
@@ -57,10 +57,10 @@ function copStep(c,dt){const onCar=G.mode==='car',tgt=onCar?car:me,d=Math.hypot(
  if(c.hp<=0){if(c.hurtBy)G.crime(Math.min(5,WD.stars+1));G.toast('Police gaari tabah!',1500);removeCop(c);}
  c.mk.x=c.x;c.mk.z=c.z;}
 function busted(){if(WD.busting||dying.v)return;WD.busting=true;const fine=Math.min(SV.money,150+Math.floor(SV.money*.1));
- G.fade(()=>{G.addMoney(-fine);clearCops();setWanted(0);G.cancelAll();if(M.active)G.finishMission(false,'Police ne pakad liya');G.teleportCar('police');WD.busting=false;G.toast('BUSTED! Jurmana $'+fine,3400);setTimeout(()=>G.event('busted',null,true),700);},500);}
+ G.fade(()=>{G.addMoney(-fine);clearCops();setWanted(0);G.cancelAll();if(M.active)G.finishMission(false,'Police ne pakad liya');G.teleportCar('police');WD.busting=false;G.toast('BUSTED! Jurmana Rs '+fine,3400);setTimeout(()=>G.event('busted',null,true),700);},500);}
 function wasted(){if(dying.v)return;dying.v=true;
  G.fade(()=>{const fine=Math.min(SV.money,100+Math.floor(SV.money*.05));G.addMoney(-fine);clearCops();setWanted(0);G.cancelAll();if(M.active)G.finishMission(false,'Saras behosh ho gayi');
-  if(G.indoor)G.exitHome();me.hp=70;G.teleportCar('hospital');dying.v=false;G.toast('WASTED! Hospital ka bill $'+fine,3400);setTimeout(()=>G.event('wasted',null,true),700);},700);}
+  if(G.indoor)G.exitHome();me.hp=70;G.teleportCar('hospital');dying.v=false;G.toast('WASTED! Hospital ka bill Rs '+fine,3400);setTimeout(()=>G.event('wasted',null,true),700);},700);}
 function policeLogic(dt){
  if(WD.stars===0){for(const c of cops.slice()){c.away+=dt;const f=G.focusPos();if(c.away>14||Math.hypot(c.x-f.x,c.z-f.z)>170)removeCop(c);else copStep(c,dt);}return;}
  const want=Math.min(6,1+WD.stars);WD.spawnT-=dt;if(!G.indoor&&cops.length<want&&WD.spawnT<=0){spawnCop();WD.spawnT=3.2;}
@@ -97,16 +97,16 @@ function attack(){if(G.indoor||G.mode!=='foot'){G.toast('Pehle gaari se utro (�
   for(const p of G.peds){if(p.down>0)continue;const dx=p.x-me.x,dz=p.z-me.z,d=Math.hypot(dx,dz);if(d<2.3&&(dx*fx+dz*fz)/(d||1)>.35){G.knockPed(p);G.crime(1);hit=true;}}
   for(const c of cops){const dx=c.x-me.x,dz=c.z-me.z;if(Math.hypot(dx,dz)<3){c.hp-=4;c.hurtBy=true;G.crime(Math.min(5,WD.stars+1));hit=true;}}
   G.burst(hit?500:900,.08,hit?.3:.08);return;}
- if(SV.ammo<=0){G.toast('Goliyan khatam — "goliyan kharido" bolo ($100)');return;}
+ if(SV.ammo<=0){G.toast('Goliyan khatam — "goliyan kharido" bolo (Rs 100)');return;}
  SV.ammo--;atkCD=.3;me.atk=.15;G.vib(35);G.statHud();
  let best=null,ba=.5;const cand=[];for(const t of thugs)if(!t.dead)cand.push({o:t,k:'t'});for(const p of G.peds)if(p.down<=0)cand.push({o:p,k:'p'});for(const c of cops)cand.push({o:c,k:'c'});
  for(const q of cand){const dx=q.o.x-me.x,dz=q.o.z-me.z,d=Math.hypot(dx,dz);if(d>42)continue;const a=Math.abs(wrapA(Math.atan2(dx,dz)-me.h));if(a<ba){ba=a;best=q;}}
  let dist=40;if(best){me.h=Math.atan2(best.o.x-me.x,best.o.z-me.z);dist=Math.hypot(best.o.x-me.x,best.o.z-me.z);
   if(best.k==='t')thugHit(best.o,28+lv);else if(best.k==='p'){G.knockPed(best.o);G.crime(2);}else{best.o.hp-=30;best.o.hurtBy=true;G.crime(Math.min(5,WD.stars+2));}}
  const ex=Math.sin(me.h),ez=Math.cos(me.h);tracer(me.x+ex*.5,me.z+ez*.5,me.x+ex*dist,me.z+ez*dist);G.tone(190,.12,.1,'sawtooth',60);G.burst(1800,.07,.2);}
-function setWeapon(w){if(w==='pistol'&&!SV.pistol){if(SV.money>=300){G.addMoney(-300);SV.pistol=true;SV.ammo+=24;G.saveGame();G.toast('Pistol khareed liya ($300)',2200);}else{G.toast('Pistol $300 ka hai — paise kam hain',2200);return;}}
+function setWeapon(w){if(w==='pistol'&&!SV.pistol){if(SV.money>=300){G.addMoney(-300);SV.pistol=true;SV.ammo+=24;G.saveGame();G.toast('Pistol khareed liya (Rs 300)',2200);}else{G.toast('Pistol Rs 300 ka hai — paise kam hain',2200);return;}}
  weapon=w;btnAtk.textContent=w==='pistol'?'🔫':'👊';G.statHud();G.toast(w==='pistol'?'Pistol nikal liya':'Haath (fists)',1000);}
-function buyAmmo(){if(SV.money<100){G.toast('Goliyan $100 ki hain — paise kam hain');return;}if(!SV.pistol){G.toast('Pehle pistol lo');return;}G.addMoney(-100);SV.ammo+=24;G.saveGame();G.statHud();G.toast('+24 goliyan',1400);}
+function buyAmmo(){if(SV.money<100){G.toast('Goliyan Rs 100 ki hain — paise kam hain');return;}if(!SV.pistol){G.toast('Pehle pistol lo');return;}G.addMoney(-100);SV.ammo+=24;G.saveGame();G.statHud();G.toast('+24 goliyan',1400);}
 
 /* ───────── garage ───────── */
 const CAR_PRICE={sedan:0,hatch:800,suv:2500,sports:6000},CAR_SPEC={sedan:{maxV:42,acc:1},hatch:{maxV:40,acc:1.05},suv:{maxV:38,acc:.95},sports:{maxV:50,acc:1.25}};
@@ -115,7 +115,7 @@ function applyCar(shape,color){const nc=G.buildCar(color,{shape});scene.remove(c
  scene.add(car.mesh);car.mesh.visible=!G.indoor;Object.assign(car,CAR_SPEC[shape]);car.lightsOn=false;}
 function changeCar(model,color){const l=lm(SV.home),f=G.focusPos();if(!G.indoor&&Math.hypot(f.x-l.x,f.z-l.z)>46){G.toast('Garage ghar par hai — pehle ghar jao');return;}
  let shape=SV.car.shape,col=SV.car.color;
- if(model&&CAR_PRICE[model]!=null&&model!==shape){if(!SV.car.owned.includes(model)){if(SV.money<CAR_PRICE[model]){G.toast(model+' ka daam $'+CAR_PRICE[model]+' — paise kam hain',2600);return;}G.addMoney(-CAR_PRICE[model]);SV.car.owned.push(model);}shape=model;}
+ if(model&&CAR_PRICE[model]!=null&&model!==shape){if(!SV.car.owned.includes(model)){if(SV.money<CAR_PRICE[model]){G.toast(model+' ka daam Rs '+CAR_PRICE[model]+' — paise kam hain',2600);return;}G.addMoney(-CAR_PRICE[model]);SV.car.owned.push(model);}shape=model;}
  if(color){const c=COLORS[String(color).toLowerCase()]||(/^#[0-9a-f]{6}$/i.test(color)?color:null);if(c)col=c;}
  SV.car.shape=shape;SV.car.color=col;G.saveGame();applyCar(shape,col);G.toast('Gaari: '+shape,1800);}
 
@@ -174,16 +174,16 @@ G.hooks.update.push(dt=>{
  hurtT-=dt;if(hurtT<=0&&me.hp<100&&!dying.v)me.hp=Math.min(100,me.hp+dt*1.5);
  if(G.mode==='car'&&car.hp<=0)car.maxV=20;else if(car.hp>0&&car.maxV<CAR_SPEC[car.shape].maxV)Object.assign(car,CAR_SPEC[car.shape]);
  if(!G.indoor){const pl=lm('petrol').stop,hs=lm('hospital').stop;
-  if(G.mode==='car'&&repCD<=0&&car.hp<99&&Math.hypot(car.x-pl.x,car.z-pl.z)<14&&Math.abs(car.vf)<3){const cost=Math.min(SV.money,Math.ceil((100-car.hp)*3));car.hp=100;G.addMoney(-cost);repCD=6;G.toast('Gaari repair ho gayi (-$'+cost+') 🔧',2200);G.tone(660,.12,.05,'triangle');}
-  const f=G.focusPos();if(healCD<=0&&me.hp<99&&Math.hypot(f.x-hs.x,f.z-hs.z)<16){const cost=Math.min(SV.money,60);me.hp=100;G.addMoney(-cost);healCD=8;G.toast('Hospital: health full (-$'+cost+') ❤',2200);}}});
+  if(G.mode==='car'&&repCD<=0&&car.hp<99&&Math.hypot(car.x-pl.x,car.z-pl.z)<14&&Math.abs(car.vf)<3){const cost=Math.min(SV.money,Math.ceil((100-car.hp)*3));car.hp=100;G.addMoney(-cost);repCD=6;G.toast('Gaari repair ho gayi (-Rs '+cost+') 🔧',2200);G.tone(660,.12,.05,'triangle');}
+  const f=G.focusPos();if(healCD<=0&&me.hp<99&&Math.hypot(f.x-hs.x,f.z-hs.z)<16){const cost=Math.min(SV.money,60);me.hp=100;G.addMoney(-cost);healCD=8;G.toast('Hospital: health full (-Rs '+cost+') ❤',2200);}}});
 
 /* ───────── actions, buttons, prompt ───────── */
 A.attack=inst(()=>attack(),'attack');A.weapon=inst(a=>setWeapon(a.type==='pistol'?'pistol':'fists'),'weapon');A.buy_ammo=inst(()=>buyAmmo(),'buy_ammo');
 A.radio=inst(a=>radio(a.state||'on'),'radio');A.repair=a=>A.goto({place:'petrol'});A.change_car=inst(a=>changeCar(a.model,a.color),'change_car');
 G.promptExtras.push(`STAGE 3 ACTIONS:
-{"a":"attack"} punch (fists) or fire (pistol) at the nearest enemy in front — only ON FOOT (exit the car first). {"a":"weapon","type":"fists|pistol"} (pistol costs $300 once) / {"a":"buy_ammo"} ($100 for 24 bullets).
+{"a":"attack"} punch (fists) or fire (pistol) at the nearest enemy in front — only ON FOOT (exit the car first). {"a":"weapon","type":"fists|pistol"} (pistol costs Rs 300 once) / {"a":"buy_ammo"} (Rs 100 for 24 bullets).
 {"a":"radio","state":"on|off|next"} / {"a":"repair"} drives/walks to the Petrol Pump where the car is repaired automatically for money.
-{"a":"change_car","model":"sedan|hatch|suv|sports","color":"red|blue|black|white|silver|green|yellow|orange|purple|pink"} only near home (hatch $800, suv $2500, sports $6000, recolouring is free).
+{"a":"change_car","model":"sedan|hatch|suv|sports","color":"red|blue|black|white|silver|green|yellow|orange|purple|pink"} only near home (hatch Rs 800, suv Rs 2500, sports Rs 6000, recolouring is free).
 POLICE: crimes (hitting pedestrians, crashing into traffic, attacking people/police) raise wanted stars; cops chase. To escape: drive away out of sight for ~15s, or hide inside the home. If stars>0 and the player asks for help, give short practical advice and/or drive away (speed 80+, turns). BUSTED = fine, WASTED = hospital bill.
 Missions now include fights (Gunde Bhagao, Bada Don: get out of the car and punch/shoot), a chase (Chor Ka Peecha), evading police and a street race.`);
 G.stateExtras.push(()=>({wanted_stars:WD.stars,weapon,pistol_owned:SV.pistol,ammo:SV.ammo,saras_health:Math.round(me.hp),car_health:Math.round(car.hp),car_model:SV.car.shape,
