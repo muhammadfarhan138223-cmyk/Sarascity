@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#0a0f14">
 <title>Saras City</title>
+<script>
+window.__errs=[];window.__ld={};
+window.addEventListener('error',function(e){try{window.__errs.push(((e.filename||'').split('/').pop()||'page')+':'+(e.lineno||0)+' '+(e.message||'error'));}catch(x){}});
+window.addEventListener('unhandledrejection',function(e){try{window.__errs.push('promise: '+(e.reason&&e.reason.message||e.reason));}catch(x){}});
+function __s(n,ok){window.__ld[n]=ok;}
+</script>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <style>
@@ -206,6 +212,7 @@ body.foot #joy{display:block}
     <div class="chk"><input type="checkbox" id="cAuto"><label for="cAuto" style="margin:0;color:var(--ink);font-size:15px">Mausam khud badle</label></div>
     <p id="stageinfo"></p>
     <div class="row">
+      <button class="btn" id="bCache2">🔄 Cache saaf</button>
       <button class="btn" id="bWipe">Save reset</button>
       <button class="btn" id="bCancel">Band karo</button>
       <button class="btn pri" id="bSave">Save</button>
@@ -227,24 +234,26 @@ body.foot #joy{display:block}
 <div class="modal" id="start">
   <div class="card glass">
     <h1>SARAS CITY</h1>
-    <div class="tag" id="stagetag">Stage 1 · Basic</div>
+    <div class="tag" id="stagetag">Check ho raha hai…</div>
     <p>Gaari chalao ya Saras ko bolo. Phone ko <b>landscape</b> mein karo. Pehli baar mic ki ijazat maangi jayegi.</p>
     <p style="font-size:12.5px">Keyboard: W A S D / arrows = chalao · Space = handbrake · V = mic · T = type · H = screen clear/show · C = camera · R = gaari seedhi</p>
     <div class="row" style="justify-content:center"><button class="btn pri" id="bGo" style="font-size:18px;padding:12px 30px">Khelo</button></div>
+    <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" id="bDiag">🩺 Files check karo</button><button class="btn" id="bCache">🔄 Cache saaf karo</button></div>
+    <pre id="diag" style="text-align:left;font-size:12px;line-height:1.5;white-space:pre-wrap;color:var(--mut);margin:10px 0 0;-webkit-user-select:text;user-select:text"></pre>
   </div>
 </div>
 <div id="loadmsg">Loading 3D engine…</div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/BufferGeometryUtils.js"></script>
-<script src="core.js"></script>
-<script src="stage2.js" onerror="void 0"></script>
-<script src="stage3.js" onerror="void 0"></script>
-<script src="stage4.js" onerror="void 0"></script>
-<script src="stage5.js" onerror="void 0"></script>
-<script src="stage6.js" onerror="void 0"></script>
-<script src="stage7.js" onerror="void 0"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" onload="__s('three',1)" onerror="__s('three',0)"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js" onload="__s('gltf',1)" onerror="__s('gltf',0)"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/BufferGeometryUtils.js" onload="__s('bgu',1)" onerror="__s('bgu',0)"></script>
+<script src="core.js" onload="__s('core.js',1)" onerror="__s('core.js',0)"></script>
+<script src="stage2.js" onload="__s('stage2.js',1)" onerror="__s('stage2.js',0)"></script>
+<script src="stage3.js" onload="__s('stage3.js',1)" onerror="__s('stage3.js',0)"></script>
+<script src="stage4.js" onload="__s('stage4.js',1)" onerror="__s('stage4.js',0)"></script>
+<script src="stage5.js" onload="__s('stage5.js',1)" onerror="__s('stage5.js',0)"></script>
+<script src="stage6.js" onload="__s('stage6.js',1)" onerror="__s('stage6.js',0)"></script>
+<script src="stage7.js" onload="__s('stage7.js',1)" onerror="__s('stage7.js',0)"></script>
 <script>
   (function(){ /* app icon + install manifest made in code (no PNG files needed) */
     try{
@@ -260,6 +269,28 @@ body.foot #joy{display:block}
     }catch(e){}
   })();
   if('serviceWorker' in navigator&&location.protocol==='https:'){navigator.serviceWorker.register('sw.js').catch(function(){});}
+  var EXP={'core.js':80004,'stage2.js':24694,'stage3.js':25045,'stage4.js':11437,'stage5.js':9900,'stage6.js':16492,'stage7.js':23092};
+  function loadedSize(n){try{var e=performance.getEntriesByType('resource').filter(function(r){return r.name.split('?')[0].slice(-n.length-1)==='/'+n;})[0];return e?e.decodedBodySize:0;}catch(x){return 0;}}
+  function diag(){var el=document.getElementById('diag');el.textContent='Check ho raha hai…';var lines=[];
+    lines.push('Libraries: three '+(window.THREE?'✅':'❌')+' · GLTFLoader '+(window.THREE&&THREE.GLTFLoader?'✅':'❌')+' · BufferGeometryUtils '+(window.THREE&&THREE.BufferGeometryUtils?'✅':'❌'));
+    var names=Object.keys(EXP);
+    Promise.all(names.map(function(n){return fetch(n+'?v='+Date.now(),{cache:'no-store'}).then(function(r){
+      if(!r.ok)return n+': ❌ GitHub/Vercel par nahi mili ('+r.status+') — file ka naam ya jagah check karo';
+      return r.arrayBuffer().then(function(b){var sv=b.byteLength,ls=loadedSize(n),s=n+': ';
+        if(sv!==EXP[n])s+='⚠ server par PURANI ya adhoori file ('+sv+' bytes, honi chahiye '+EXP[n]+') — dobara upload karo';
+        else if(ls&&ls!==EXP[n])s+='⚠ file sahi hai lekin browser purani copy chala raha hai — "Cache saaf karo" dabao';
+        else s+='✅ sahi version';
+        if(window.__ld[n]===0)s+=' · browser ne chalayi nahi';return s;});
+    }).catch(function(){return n+': ❓ check nahi ho saka (internet?)';});})).then(function(r){
+      lines=lines.concat(r);lines.push('Game: '+(window.G&&G.boot?('stage '+G.stage+(G.realism?' + realism':'')+(G.pakistan?' + pakistan':'')):'❌ start nahi hua'));
+      if(window.__errs.length)lines.push('JS errors:\n  '+window.__errs.slice(-5).join('\n  '));
+      var bad=lines.some(function(l){return l.indexOf('❌')>=0||l.indexOf('⚠')>=0;});el.textContent=(bad?'⚠ Kuch masla hai:\n':'✅ Sab files theek hain\n')+lines.join('\n');});}
+  function clearCache(){var p=[];if(navigator.serviceWorker&&navigator.serviceWorker.getRegistrations)p.push(navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(r){return r.unregister();}));}));
+    if(window.caches)p.push(caches.keys().then(function(ks){return Promise.all(ks.map(function(k){return caches.delete(k);}));}));
+    Promise.all(p).then(function(){location.reload();}).catch(function(){location.reload();});}
+  document.getElementById('bDiag').addEventListener('click',diag);document.getElementById('bCache').addEventListener('click',clearCache);
+  var bc2=document.getElementById('bCache2');if(bc2)bc2.addEventListener('click',clearCache);
+  setTimeout(diag,1200);
   if(window.G&&G.boot){G.boot();}else{document.getElementById('loadmsg').textContent='core.js ya three.js load nahi hua — internet aur file names check karo.';}
 </script>
 </body>
