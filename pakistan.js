@@ -111,8 +111,8 @@ function rickshaw(){const g=new T.Group(),b=new T.Group();g.add(b);const body=ph
 function bike(){const g=new T.Group(),b=new T.Group();g.add(b);const pa=phong(pick(['#b91c1c','#1d4ed8','#111827','#15803d']),70),blk=phong('#111',20),sil=phong('#c9ced4',90),hm=new T.MeshBasicMaterial({color:0xfff3c8}),tm=new T.MeshBasicMaterial({color:0x5a0000});
  box(b,.28,.5,1.3,pa,0,.62,-.05);box(b,.34,.22,.5,pa,0,.98,.2);box(b,.3,.1,.62,blk,0,.92,-.4);box(b,.08,.75,.08,sil,0,.58,.66);box(b,.72,.06,.06,sil,0,1.06,.62);box(b,.16,.16,.1,hm,0,.92,.78);box(b,.14,.1,.06,tm,0,.8,-.72);box(b,.09,.09,.6,sil,.2,.35,-.5);
  const f=wheel(g,.32,.1,0,.32,.68),r=wheel(g,.32,.12,0,.32,-.62);
- if(G.buildPerson){const rider=G.buildPerson('#5a6b7a','#5a6b7a','#c68a5e','#111',.88);rider.mesh.position.set(0,.14,-.28);rider.legL.rotation.x=rider.legR.rotation.x=-1.15;rider.armL.rotation.x=rider.armR.rotation.x=-1.0;b.add(rider.mesh);}
- return vehicle(g,b,[f.wg],[r.wg],[f.t,r.t],hm,tm,{shape:'bike',half:.45,cr:.8,speedK:1.15});}
+ let riderMesh=null;if(G.buildPerson){const rider=G.buildPerson('#5a6b7a','#5a6b7a','#c68a5e','#111',.88);rider.mesh.position.set(0,.14,-.28);rider.legL.rotation.x=rider.legR.rotation.x=-1.15;rider.armL.rotation.x=rider.armR.rotation.x=-1.0;b.add(rider.mesh);riderMesh=rider.mesh;}
+ return vehicle(g,b,[f.wg],[r.wg],[f.t,r.t],hm,tm,{shape:'bike',half:.45,cr:.8,speedK:1.15,driver:riderMesh});}
 let artTex=[];
 function truckArt(){if(artTex.length<3){artTex.push(G.ctex(512,256,g=>{g.fillStyle=pick(['#c2410c','#1d4ed8','#15803d','#b91c1c','#7e22ce']);g.fillRect(0,0,512,256);
   for(let x=0;x<512;x+=64){g.fillStyle=(x/64)%2?'rgba(255,214,0,.35)':'rgba(255,255,255,.16)';g.fillRect(x,0,32,256);}
