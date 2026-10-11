@@ -113,6 +113,18 @@ body.foot #joy{display:block}
 .mrow.cur{border-color:var(--amber)}.mrow.lock{opacity:.5}.mrow .acts{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
 #aib{font-size:12.5px}
 #aiout{font-size:13px;line-height:1.55;color:var(--ink);white-space:pre-wrap;margin:8px 0 0;-webkit-user-select:text;user-select:text}
+
+/* v2: tidy controls, no blur (faster), context buttons */
+.glass,.cb{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.glass{background:rgba(10,16,22,.82)}.cb{background:rgba(10,16,22,.74)}
+#side{display:grid!important;grid-template-columns:repeat(2,56px);grid-auto-rows:56px;gap:8px;direction:rtl;align-items:center;justify-items:center;right:max(12px,env(safe-area-inset-right));bottom:calc(max(12px,env(safe-area-inset-bottom)) + 104px)}
+#side>*{direction:ltr}#xbtns{display:contents!important}
+#side .cb,#side .cb.sm{width:54px!important;height:54px!important;font-size:21px!important}
+#mic{width:60px!important;height:60px!important;font-size:24px!important}#mic.on{animation:none!important;background:rgba(255,107,94,.6)}
+body:not(.foot) #xbtns>[aria-label="Attack"],body:not(.foot) #xbtns>[aria-label="Weapon"],body:not(.foot) #xbtns>[aria-label="Run"]{display:none}
+body.foot #xbtns>[aria-label="Nitro"],body.foot #bHorn{display:none}
+body.foot #side{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 132px)}
+body.foot #xbtns>[aria-label="Attack"]{position:fixed;right:max(26px,env(safe-area-inset-right));bottom:max(26px,env(safe-area-inset-bottom));width:92px!important;height:92px!important;font-size:38px!important;background:rgba(255,107,94,.5);border-color:var(--red)}
 </style>
 </head>
 <body>
@@ -254,6 +266,7 @@ body.foot #joy{display:block}
 <script src="stage5.js" onload="__s('stage5.js',1)" onerror="__s('stage5.js',0)"></script>
 <script src="stage6.js" onload="__s('stage6.js',1)" onerror="__s('stage6.js',0)"></script>
 <script src="pakistan.js" onload="__s('pakistan.js',1)" onerror="__s('pakistan.js',0)"></script>
+<script src="gameplay.js" onload="__s('gameplay.js',1)" onerror="__s('gameplay.js',0)"></script>
 <script>
   (function(){ /* app icon + install manifest made in code (no PNG files needed) */
     try{
@@ -269,7 +282,7 @@ body.foot #joy{display:block}
     }catch(e){}
   })();
   if('serviceWorker' in navigator&&location.protocol==='https:'){navigator.serviceWorker.register('sw.js').catch(function(){});}
-  var EXP={'core.js':80004,'stage2.js':24694,'stage3.js':25045,'stage4.js':11437,'stage5.js':9900,'stage6.js':16492,'pakistan.js':23094,'person.glb':186812};
+  var EXP={'core.js':80004,'stage2.js':24698,'stage3.js':25066,'stage4.js':11437,'stage5.js':9900,'stage6.js':16492,'pakistan.js':23151,'gameplay.js':5371,'person.glb':186812};
   function loadedSize(n){try{var e=performance.getEntriesByType('resource').filter(function(r){return r.name.split('?')[0].slice(-n.length-1)==='/'+n;})[0];return e?e.decodedBodySize:0;}catch(x){return 0;}}
   function diag(){var el=document.getElementById('diag');el.textContent='Check ho raha hai…';var lines=[];
     lines.push('Libraries: three '+(window.THREE?'✅':'❌')+' · GLTFLoader '+(window.THREE&&THREE.GLTFLoader?'✅':'❌')+' · BufferGeometryUtils '+(window.THREE&&THREE.BufferGeometryUtils?'✅':'❌'));
