@@ -172,7 +172,7 @@ G.hooks.update.push(dt=>{
  policeLogic(dt);for(const t of thugs.slice())thugStep(t,dt);radioTick(dt);
  for(let i=tracers.length-1;i>=0;i--){tracers[i].t-=dt;if(tracers[i].t<=0){scene.remove(tracers[i].l);tracers.splice(i,1);}}
  hurtT-=dt;if(hurtT<=0&&me.hp<100&&!dying.v)me.hp=Math.min(100,me.hp+dt*1.5);
- if(G.mode==='car'&&car.hp<=0)car.maxV=20;else if(car.hp>0&&car.maxV<CAR_SPEC[car.shape].maxV)Object.assign(car,CAR_SPEC[car.shape]);
+ if(G.mode==='car'&&car.hp<=0)car.maxV=20;else if(car.hp>0&&CAR_SPEC[car.shape]&&car.maxV<CAR_SPEC[car.shape].maxV)Object.assign(car,CAR_SPEC[car.shape]);
  if(!G.indoor){const pl=lm('petrol').stop,hs=lm('hospital').stop;
   if(G.mode==='car'&&repCD<=0&&car.hp<99&&Math.hypot(car.x-pl.x,car.z-pl.z)<14&&Math.abs(car.vf)<3){const cost=Math.min(SV.money,Math.ceil((100-car.hp)*3));car.hp=100;G.addMoney(-cost);repCD=6;G.toast('Gaari repair ho gayi (-Rs '+cost+') 🔧',2200);G.tone(660,.12,.05,'triangle');}
   const f=G.focusPos();if(healCD<=0&&me.hp<99&&Math.hypot(f.x-hs.x,f.z-hs.z)<16){const cost=Math.min(SV.money,60);me.hp=100;G.addMoney(-cost);healCD=8;G.toast('Hospital: health full (-Rs '+cost+') ❤',2200);}}});
