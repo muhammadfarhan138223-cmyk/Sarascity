@@ -188,7 +188,7 @@ G.hooks.update.push(dt=>{
  missionStep(dt);});
 
 /* ───────── actions, buttons, prompt ───────── */
-A.exit_car=inst(()=>exitCar(),'exit_car');A.enter_car=inst(()=>enterCar(),'enter_car');
+A.exit_car=inst(()=>exitCar(),'exit_car');A.enter_car=inst(()=>G.enterCar(),'enter_car');
 A.enter_home=inst(()=>enterHome(),'enter_home');A.exit_home=inst(()=>exitHome(),'exit_home');
 A.sleep=inst(()=>sleepNow(),'sleep');A.tv=inst(a=>{tvOn=a.on!==false;},'tv');A.save=inst(()=>{G.saveGame();G.toast('Game save ho gaya 💾');},'save');
 A.change_home=inst(a=>changeHome(a.to),'change_home');
@@ -208,7 +208,7 @@ G.stateExtras.push(()=>{const d=M.active,nd=defs[SV.mi],l=lm(SV.home);return{on_
 G.teleportCar=function(id){const l=lm(id);parkCarAtHome({stop:l.stop});if(G.mode==='foot'&&!G.indoor)toCar();car.hp=Math.max(car.hp,60);G.snapCam();};
 G.hooks.ready.push(()=>{
  const xb=$('xbtns'),mk=(label,fn,t)=>{const b=document.createElement('button');b.className='cb sm';b.textContent=label;b.setAttribute('aria-label',t);b.addEventListener('click',fn);xb.appendChild(b);return b;};
- mk('🚪',()=>{if(G.indoor){exitHome();return;}if(G.mode==='car'){exitCar();return;}const l=lm(SV.home);if(Math.hypot(me.x-l.door.x,me.z-l.door.z)<5){enterHome();return;}enterCar();},'Gaari / Ghar');
+ mk('🚪',()=>{if(G.indoor){exitHome();return;}if(G.mode==='car'){exitCar();return;}const l=lm(SV.home);if(Math.hypot(me.x-l.door.x,me.z-l.door.z)<5){enterHome();return;}G.enterCar();},'Gaari / Ghar');
  mk('🏃',()=>{runTog=!runTog;G.toast(runTog?'Daudna on':'Daudna off',900);},'Run');
  const nn=S.quality==='low'?3:S.quality==='med'?7:12,np=S.quality==='low'?8:S.quality==='med'?16:24;for(let i=0;i<nn;i++)spawnNpc();for(let i=0;i<np;i++)spawnPed();
  const l=lm(SV.home);homeMk.x=l.stop.x;homeMk.z=l.stop.z;G.markers.push(homeMk);
