@@ -95,7 +95,7 @@ function addBox(x,y,z,w,h,d,mat,col){const m=new T.Mesh(new T.BoxGeometry(w,h,d)
 function bldg(x,z,w,d,h,k){const g=new T.BoxGeometry(w,h,d),uv=g.attributes.uv;
  for(let i=0;i<uv.count;i++){const f=(i/4)|0;if(f>=2&&f<4)continue;uv.setXY(i,uv.getX(i)*((f<2?d:w)/16),uv.getY(i)*(h/16));}
  const m=new T.Mesh(g,[bMats[k],bMats[k],roofM,roofM,bMats[k],bMats[k]]);m.position.set(x,h/2+.3,z);m.castShadow=m.receiveShadow=true;cityGroup.add(m);
- G.colliders.push({x0:x-w/2-.2,x1:x+w/2+.2,z0:z-d/2-.2,z1:z+d/2+.2});return m;}
+ G.colliders.push({x0:x-w/2-.2,x1:x+w/2+.2,z0:z-d/2-.2,z1:z+d/2+.2});(G.bldList||(G.bldList=[])).push({x,z,w,d,h,k});return m;}
 const treeSpots=[];
 
 /* ground, roads */
