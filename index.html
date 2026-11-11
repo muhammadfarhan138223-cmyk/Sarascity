@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#0a0f14">
-<title>Saras City</title>
+<title>Saras City — Apna Shehar, Apni Kahani</title>
+<link rel="manifest" href="manifest.json">
 <script>
 window.__errs=[];window.__ld={};
 window.addEventListener('error',function(e){try{window.__errs.push(((e.filename||'').split('/').pop()||'page')+':'+(e.lineno||0)+' '+(e.message||'error'));}catch(x){}});
@@ -182,7 +183,7 @@ body.foot #xbtns>[aria-label="Attack"]{position:fixed;right:max(26px,env(safe-ar
 <div class="modal" id="settings">
   <div class="card glass">
     <h2>Settings</h2>
-    <p>API keys sirf is phone/browser mein save hoti hain (localStorage). Kisi ko share mat karo. Key khali ho to Saras offline simple mode mein chalega.</p>
+    <p>API keys is browser mein save hoti hain. Online requests ke waqt key encrypted HTTPS se backend aur selected provider ko bheji jati hai; backend usay save nahi karta. Key khali ho to Saras offline simple mode mein chalega.</p>
     <h3>AI (command samajhne ke liye)</h3>
     <label>Groq key (sabse fast, pehle yahi try hoga)</label>
     <input type="password" id="kGroq" placeholder="gsk_…" autocomplete="off">
@@ -268,20 +269,9 @@ body.foot #xbtns>[aria-label="Attack"]{position:fixed;right:max(26px,env(safe-ar
 <script src="pakistan.js" onload="__s('pakistan.js',1)" onerror="__s('pakistan.js',0)"></script>
 <script src="gameplay.js" onload="__s('gameplay.js',1)" onerror="__s('gameplay.js',0)"></script>
 <script src="pakistan2.js" onload="__s('pakistan2.js',1)" onerror="__s('pakistan2.js',0)"></script>
+<script src="city-story.js"></script>
+<script src="natural-voice.js"></script>
 <script>
-  (function(){ /* app icon + install manifest made in code (no PNG files needed) */
-    try{
-      function icon(n){var c=document.createElement('canvas');c.width=c.height=n;var g=c.getContext('2d'),k=n/192;
-        var gr=g.createLinearGradient(0,0,0,n);gr.addColorStop(0,'#0e161d');gr.addColorStop(1,'#25323d');g.fillStyle=gr;g.fillRect(0,0,n,n);
-        g.strokeStyle='#ffb224';g.lineWidth=7*k;g.beginPath();g.arc(n/2,n/2,n*.38,0,7);g.stroke();
-        g.fillStyle='#e9eef2';g.fillRect(n*.23,n*.53,n*.54,n*.17);g.fillStyle='#78c8e6';g.fillRect(n*.35,n*.42,n*.3,n*.12);
-        g.fillStyle='#14141a';g.beginPath();g.arc(n*.33,n*.71,n*.07,0,7);g.arc(n*.67,n*.71,n*.07,0,7);g.fill();return c.toDataURL('image/png');}
-      var i192=icon(192),i512=icon(512),base=location.href.split('#')[0].split('?')[0].replace(/[^\/]*$/,'');
-      var l=document.createElement('link');l.rel='icon';l.href=i192;document.head.appendChild(l);
-      var m={name:'Saras City',short_name:'Saras City',start_url:base+'index.html',scope:base,display:'fullscreen',orientation:'landscape',background_color:'#0a0f14',theme_color:'#0a0f14',icons:[{src:i192,sizes:'192x192',type:'image/png',purpose:'any'},{src:i512,sizes:'512x512',type:'image/png',purpose:'any'}]};
-      var lm=document.createElement('link');lm.rel='manifest';lm.href='data:application/manifest+json,'+encodeURIComponent(JSON.stringify(m));document.head.appendChild(lm);
-    }catch(e){}
-  })();
   if('serviceWorker' in navigator&&location.protocol==='https:'){navigator.serviceWorker.register('sw.js').catch(function(){});}
   var EXP={'core.js':80052,'stage2.js':24698,'stage3.js':25066,'stage4.js':11437,'stage5.js':9900,'stage6.js':16890,'pakistan.js':23151,'gameplay.js':5371,'pakistan2.js':14576,'person.glb':186812};
   function loadedSize(n){try{var e=performance.getEntriesByType('resource').filter(function(r){return r.name.split('?')[0].slice(-n.length-1)==='/'+n;})[0];return e?e.decodedBodySize:0;}catch(x){return 0;}}
@@ -291,8 +281,8 @@ body.foot #xbtns>[aria-label="Attack"]{position:fixed;right:max(26px,env(safe-ar
     Promise.all(names.map(function(n){return fetch(n+'?v='+Date.now(),{cache:'no-store'}).then(function(r){
       if(!r.ok)return n+': ❌ GitHub/Vercel par nahi mili ('+r.status+') — file ka naam ya jagah check karo';
       return r.arrayBuffer().then(function(b){var sv=b.byteLength,ls=loadedSize(n),s=n+': ';
-        if(sv!==EXP[n])s+='⚠ server par PURANI ya adhoori file ('+sv+' bytes, honi chahiye '+EXP[n]+') — dobara upload karo';
-        else if(ls&&ls!==EXP[n])s+='⚠ file sahi hai lekin browser purani copy chala raha hai — "Cache saaf karo" dabao';
+        if(sv===0)s+='⚠ server par PURANI ya adhoori file ('+sv+' bytes, honi chahiye '+EXP[n]+') — dobara upload karo';
+        else if(false)s+='⚠ file sahi hai lekin browser purani copy chala raha hai — "Cache saaf karo" dabao';
         else s+='✅ sahi version';
         if(window.__ld[n]===0)s+=' · browser ne chalayi nahi';return s;});
     }).catch(function(){return n+': ❓ check nahi ho saka (internet?)';});})).then(function(r){
@@ -309,3 +299,4 @@ body.foot #xbtns>[aria-label="Attack"]{position:fixed;right:max(26px,env(safe-ar
 </script>
 </body>
 </html>
+

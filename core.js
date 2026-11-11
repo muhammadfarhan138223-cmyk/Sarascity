@@ -433,8 +433,17 @@ function say(text,speak,lang,you){const e=$('sub');if(!text&&!you)return;e.inner
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 G.say=say;
 let voices=[];const loadV=()=>{try{voices=speechSynthesis.getVoices();}catch(e){}};if('speechSynthesis'in window){loadV();speechSynthesis.onvoiceschanged=loadV;}
-function tts(text,lang){if(!('speechSynthesis'in window))return;if(S.snd&&S.snd!=='all')return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang=lang;
+function deviceTts(text,lang){if(!('speechSynthesis'in window))return;if(S.snd&&S.snd!=='all')return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang=lang;
  const base=lang.slice(0,2),c=voices.filter(v=>v.lang.toLowerCase().startsWith(base));const v=c.find(x=>/female|zira|heera|neerja|swara|google/i.test(x.name))||c[0];if(v)u.voice=v;u.rate=.98;u.pitch=1.1;u.onstart=()=>{ttsBusy=true;ttsT=performance.now();stopRec();};const done=()=>{ttsBusy=false;if(wantListen)setTimeout(startRec,450);};u.onend=done;u.onerror=done;speechSynthesis.speak(u);}catch(e){ttsBusy=false;}}
+let speechGeneration=0;
+function tts(text,lang){
+ const generation=++speechGeneration;
+ if(S.snd&&S.snd!=='all'){G.stopNaturalSpeech&&G.stopNaturalSpeech();return;}
+ if(!G.naturalSpeech){deviceTts(text,lang);return;}
+ try{speechSynthesis.cancel();}catch(e){}
+ ttsBusy=true;ttsT=performance.now();stopRec();
+ G.naturalSpeech(text).then(ok=>{if(generation!==speechGeneration)return;ttsBusy=false;if(!ok)deviceTts(text,lang);else if(wantListen)setTimeout(startRec,450);}).catch(()=>{if(generation===speechGeneration){ttsBusy=false;deviceTts(text,lang);}});
+}
 let ttsBusy=false,ttsT=0;
 let rec=null,listening=false,wantListen=false,pendingText='';const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 function applyMicUI(){document.body.classList.toggle('nomic',!S.mic);if(!S.mic)setListen(false);}
@@ -485,7 +494,7 @@ ACTIONS (car):
 PLACES (ids): home, petrol (Petrol Pump), hospital, police (Police Station), bazaar, mall (City Mall), park (Central Park), stadium, home2, home3.
 RULES: Combine actions naturally, e.g. "aage jaake dekho kya hai" -> speed 30, wait 3, stop, look. "jao jaldi aage" -> speed 70. "left le lo" -> turn left. Keep cruising speed sensible (max ~90). After the player says stop/ruko always include {"a":"stop"}. If asked who you are: you are Saras. If something is impossible, say so kindly in 'say' with actions [].
 ${G.promptExtras.join('\n')}`;}
-async function fetchT(url,opt,ms){const ac=new AbortController(),t=setTimeout(()=>ac.abort(),ms||10000);try{const r=await fetch(url,Object.assign({signal:ac.signal},opt));if(!r.ok)throw new Error(r.status+' '+(await r.text()).slice(0,140));return await r.json();}finally{clearTimeout(t);}}
+async function fetchT(url,opt,ms){const ac=new AbortController(),t=setTimeout(()=>ac.abort(),ms||10000);try{const u=new URL(url,location.href);let target=url,options=Object.assign({signal:ac.signal},opt);if(['api.groq.com','openrouter.ai','generativelanguage.googleapis.com'].includes(u.hostname)){const key=u.searchParams.get('key')||((opt&&opt.headers&&opt.headers.Authorization)||'').replace(/^Bearer /,'')||S.keys[u.hostname==='openrouter.ai'?'openrouter':u.hostname==='api.groq.com'?'groq':'gemini'];u.search='';target='/api/ai';options={method:'POST',signal:ac.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({url:u.href,method:opt&&opt.method||'GET',key,body:opt&&opt.body?JSON.parse(opt.body):undefined})};}const r=await fetch(target,options);if(!r.ok)throw new Error(r.status+' '+(await r.text()).slice(0,140));return await r.json();}finally{clearTimeout(t);}}
 const AIM={cache:{},pick:{}};G.aiInfo={};
 const PNAME={groq:'Groq',gemini:'Gemini',openrouter:'OpenRouter'};
 const rank=(id,pf)=>{for(let i=0;i<pf.length;i++)if(pf[i].test(id))return i;return pf.length;};
@@ -502,7 +511,7 @@ async function listModels(p){if(AIM.cache[p])return AIM.cache[p];let ids=[];
   ids=(j.data||[]).filter(m=>/:free$/.test(m.id)||(m.pricing&&+m.pricing.prompt===0&&+m.pricing.completion===0)).map(m=>m.id).filter(id=>!/vision|image|audio|embed|moderation|lyria|veo|-vl|safeguard/i.test(id));
   const pf=[/llama-3\.3/,/gpt-oss/,/qwen/,/gemma/,/mistral/,/deepseek/,/llama/];ids.sort((a,b)=>rank(a,pf)-rank(b,pf));}
  AIM.cache[p]=ids.slice(0,8);return AIM.cache[p];}
-async function candidates(p){const m=(S.models[p]||'').trim();if(m&&m!=='auto')return[m];if(AIM.pick[p])return[AIM.pick[p]];return await listModels(p);}
+async function candidates(p){const m=(S.models[p]||'').trim();if(m&&m!=='auto')return[m];const ids=await listModels(p);return [...new Set([AIM.pick[p],...ids].filter(Boolean))];}
 async function callModel(p,model,sys,msgs,img){
  if(p==='gemini'){const contents=msgs.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]}));if(img)contents[contents.length-1].parts.push({inlineData:{mimeType:'image/jpeg',data:img}});
   const url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent?key='+encodeURIComponent(S.keys.gemini);
@@ -518,9 +527,9 @@ async function callModel(p,model,sys,msgs,img){
  return j.choices[0].message.content;}
 function shortErr(e){const m=String(e&&e.message||e);if(/\b401\b|\b403\b|api key|unauthor|permission/i.test(m))return 'key galat ya band hai';if(/\b429\b|quota|rate/i.test(m))return 'limit khatam — thori der baad';if(/abort/i.test(m))return 'jawab der se aaya (timeout)';if(/failed to fetch|network/i.test(m))return 'internet ya browser ne block kiya';if(/\b404\b|not found|decommission/i.test(m))return 'model nahi mila';return m.slice(0,80);}
 async function callProvider(p,sys,msgs,img){const cand=await candidates(p);if(!cand.length)throw new Error('koi model nahi mila');let last=null;
- for(const m of cand.slice(0,p==='openrouter'?5:3)){try{const t=await callModel(p,m,sys,msgs,img);AIM.pick[p]=m;G.aiInfo[p]={ok:true,model:m};return t;}
+ for(const m of cand.slice(0,p==='openrouter'?5:3)){AIM.cooldown=AIM.cooldown||{};if((AIM.cooldown[p+':'+m]||0)>Date.now())continue;try{const t=await callModel(p,m,sys,msgs,img);AIM.pick[p]=m;G.aiInfo[p]={ok:true,model:m};return t;}
   catch(e){last=e;const msg=String(e&&e.message||e);G.aiInfo[p]={ok:false,model:m,err:shortErr(e)};if(AIM.pick[p]===m)delete AIM.pick[p];
-   if(/\b401\b|\b403\b|api key|unauthor|permission/i.test(msg))throw e;if(/\b429\b|quota|rate/i.test(msg)&&p!=='openrouter')throw e;if(/abort|failed to fetch|network/i.test(msg))throw e;}}
+   if(/\b401\b|\b403\b|api key|unauthor|permission/i.test(msg))throw e;if(/\b429\b|quota|rate/i.test(msg))AIM.cooldown[p+':'+m]=Date.now()+120000;if(/abort|failed to fetch|network/i.test(msg))throw e;}}
  throw last;}
 G.testAI=async function(onLine){const out=[];for(const p of['groq','gemini','openrouter']){
   if(!S.keys[p]){out.push('➖ '+PNAME[p]+': key nahi daali');}
@@ -638,7 +647,7 @@ function update(dt){
  applyCam(dt);skyUpdate(dt);rainUpdate(dt);hud(dt);chatUpdate(dt);if(G.uiOn&&(Q>0||((G.miniN=(G.miniN||0)+1)&1)===0))drawMini();
  cityGroup.visible=!G.indoor;beaconGroup.visible=!G.indoor;sky.visible=!G.indoor;scene.background=G.indoor?bgIndoor:null;}
 let last=performance.now();
-function frame(now){requestAnimationFrame(frame);const dt=Math.max(0,Math.min(.05,(now-last)/1000));last=now;try{update(dt);}catch(e){console.error(e);}
+function frame(now){requestAnimationFrame(frame);const dt=Math.max(0,Math.min(.05,(now-last)/1000));last=now;try{if(!G.paused)update(dt);}catch(e){console.error(e);}
  renderer.render(scene,camera);
  if(G.shotReq){try{const c=document.createElement('canvas');c.width=512;c.height=Math.round(512*canvas.height/canvas.width)||288;c.getContext('2d').drawImage(canvas,0,0,c.width,c.height);const r=G.shotReq;G.shotReq=null;r(c.toDataURL('image/jpeg',.6));}catch(e){const r=G.shotReq;G.shotReq=null;r&&r(null);}}}
 
@@ -677,3 +686,4 @@ G.boot=function(){
  for(const h of G.hooks.ready){try{h();}catch(e){console.error(e);}}
  G.snapCam();requestAnimationFrame(frame);};
 })();
+
