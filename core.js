@@ -342,7 +342,7 @@ function respawnCar(){const rp=roadPoint(car.x,car.z),hc=cardinal(car.h);car.x=r
 G.respawnCar=respawnCar;
 const DRIVE=new Set(['speed','drive','reverse','turn','goto','stop','park','wait','walk']);G.DRIVE=DRIVE;
 
-function runPlan(p){say(p.say,p.speak,p.speak_lang);const acts=(p.actions||[]).filter(a=>a&&typeof a.a==='string');
+function runPlan(p){if(G.lastReplySource==='offline'&&G.varyOfflinePlan)p=G.varyOfflinePlan(p);say(p.say,p.speak,p.speak_lang);const acts=(p.actions||[]).filter(a=>a&&typeof a.a==='string');
  if(acts.some(a=>DRIVE.has(a.a)))cancelAll();acts.forEach(a=>AP.queue.push(a));}
 function cancelAll(){AP.queue.length=0;if(AP.cur&&AP.cur.cancel)AP.cur.cancel();AP.cur=null;AP.cruise=null;}
 G.cancelAll=cancelAll;G.runPlan=runPlan;G.stepQueue=(dt)=>stepQueue(dt);
@@ -434,33 +434,53 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 G.say=say;
 let voices=[];const loadV=()=>{try{voices=speechSynthesis.getVoices();}catch(e){}};if('speechSynthesis'in window){loadV();speechSynthesis.onvoiceschanged=loadV;}
 function deviceTts(text,lang){if(!('speechSynthesis'in window))return;if(S.snd&&S.snd!=='all')return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang=lang;
- const base=lang.slice(0,2),c=voices.filter(v=>v.lang.toLowerCase().startsWith(base));const v=c.find(x=>/female|zira|heera|neerja|swara|google/i.test(x.name))||c[0];if(v)u.voice=v;u.rate=.98;u.pitch=1.1;u.onstart=()=>{ttsBusy=true;ttsT=performance.now();stopRec();};const done=()=>{ttsBusy=false;if(wantListen)setTimeout(startRec,450);};u.onend=done;u.onerror=done;speechSynthesis.speak(u);}catch(e){ttsBusy=false;}}
-let speechGeneration=0;
+ const base=lang.slice(0,2),c=voices.filter(v=>v.lang.toLowerCase().startsWith(base));const v=c.find(x=>/female|zira|heera|neerja|swara|google/i.test(x.name))||c[0];if(v)u.voice=v;u.rate=.98;u.pitch=1.1;u.onstart=()=>{G.voiceStatus&&G.voiceStatus('speaking','Saras is speaking');ttsBusy=true;ttsT=performance.now();stopRec();};const done=()=>{ttsBusy=false;G.voiceStatus&&G.voiceStatus(wantListen?'listening':'idle',wantListen?(S.wake?'Say Hey Saras':'Listening'):'Mic off');if(wantListen)setTimeout(startRec,450);};u.onend=done;u.onerror=done;speechSynthesis.speak(u);}catch(e){ttsBusy=false;}}
+let speechGeneration=0;G.stopSpeaking=()=>{speechGeneration++;ttsBusy=false;G.stopNaturalSpeech?.();try{speechSynthesis.cancel();}catch(e){}};
 function tts(text,lang){
  const generation=++speechGeneration;
  if(S.snd&&S.snd!=='all'){G.stopNaturalSpeech&&G.stopNaturalSpeech();return;}
  if(!G.naturalSpeech){deviceTts(text,lang);return;}
  try{speechSynthesis.cancel();}catch(e){}
  ttsBusy=true;ttsT=performance.now();stopRec();
- G.naturalSpeech(text).then(ok=>{if(generation!==speechGeneration)return;ttsBusy=false;if(!ok)deviceTts(text,lang);else if(wantListen)setTimeout(startRec,450);}).catch(()=>{if(generation===speechGeneration){ttsBusy=false;deviceTts(text,lang);}});
+ G.naturalSpeech(text).then(ok=>{if(generation!==speechGeneration)return;ttsBusy=false;if(!ok)deviceTts(text,lang);else{G.voiceStatus&&G.voiceStatus(wantListen?'listening':'idle',wantListen?(S.wake?'Say Hey Saras':'Listening'):'Mic off');if(wantListen)setTimeout(startRec,450);}}).catch(()=>{if(generation===speechGeneration){ttsBusy=false;deviceTts(text,lang);}});
 }
 let ttsBusy=false,ttsT=0;
-let rec=null,listening=false,wantListen=false,pendingText='';const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=null,listening=false,wantListen=false,pendingText='',recTimer=null,recFailures=0,wakeUntil=0,lastHeard='',lastHeardAt=0;
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+G.voiceState={state:'idle',message:'Mic off'};
+G.voiceStatus=function(state,message,transcript){G.voiceState={state,message:message||state,transcript:transcript||''};if(G.onVoiceState)G.onVoiceState(G.voiceState);};
 function applyMicUI(){document.body.classList.toggle('nomic',!S.mic);if(!S.mic)setListen(false);}
-function startRec(){if(!SR||!S.mic||!wantListen||rec||ttsBusy)return;const r=new SR();rec=r;r.lang=S.rec;r.interimResults=true;r.continuous=true;r.maxAlternatives=1;
- r.onstart=()=>{listening=true;$('mic').classList.add('on');};
- r.onresult=e=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const x=e.results[i];if(x.isFinal)heard(x[0].transcript);else interim+=x[0].transcript;}if(interim&&!ttsBusy)say('',null,null,interim);};
- r.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){wantListen=false;toast('Mic ki ijazat do (browser settings)',2800);}};
- r.onend=()=>{listening=false;if(rec===r)rec=null;if(!wantListen)$('mic').classList.remove('on');if(wantListen&&S.mic&&!ttsBusy)setTimeout(startRec,400);};
- try{r.start();}catch(e){rec=null;}}
-function stopRec(){const r=rec;if(r){try{r.stop();}catch(e){}}}
-function setListen(on){wantListen=!!on&&S.mic&&!!SR;$('mic').classList.toggle('on',wantListen);if(wantListen)startRec();else stopRec();}
-function toggleMic(){initAudio();if(!SR){toast('Is browser mein voice nahi — Chrome use karo, ya type karo',2600);return;}if(!S.mic){toast('Mic band hai (Settings mein on karo)');return;}setListen(!wantListen);toast(wantListen?'🎤 Mic hamesha on':'Mic pause',1200);}
-function heard(t){t=(t||'').trim();if(!t)return;
- if(S.wake){const m=t.match(/\b(saras|sarus|sarah|sara)\b|सरस|سرس/i);if(!m)return;t=t.replace(m[0],'').trim()||'haan';}
- if(busyThink){pendingText=t;return;}handle(t);}
-G.setListen=setListen;
-if(typeof document.addEventListener==='function')document.addEventListener('visibilitychange',()=>{if(document.hidden)stopRec();else if(wantListen)startRec();});
+function scheduleRec(){clearTimeout(recTimer);if(wantListen&&!document.hidden&&!ttsBusy)recTimer=setTimeout(startRec,Math.min(8000,500*Math.pow(2,recFailures)));}
+function startRec(){
+ if(!SR||!S.mic||!wantListen||rec||ttsBusy)return;
+ if(document.hidden){G.voiceStatus('suspended','Background mic suspended by browser; return to resume');return;}
+ const r=new SR();rec=r;r.lang=S.rec;r.interimResults=true;r.continuous=true;r.maxAlternatives=1;
+ r.onstart=()=>{if(rec!==r)return;listening=true;$('mic').classList.add('on');G.voiceStatus('listening',S.wake?'Say Hey Saras':'Listening — speak a command');};
+ r.onresult=e=>{if(rec!==r||ttsBusy)return;recFailures=0;let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const x=e.results[i];if(x.isFinal)heard(x[0].transcript);else interim+=x[0].transcript;}if(interim){G.voiceStatus('listening','Hearing…',interim);say('',null,null,interim);}};
+ r.onerror=e=>{if(rec!==r)return;
+  if(['not-allowed','service-not-allowed'].includes(e.error)){wantListen=false;G.micEnabled=false;G.voiceStatus('blocked','Microphone permission denied. Allow mic in browser site settings, then tap Enable mic.');}
+  else if(e.error==='audio-capture'){wantListen=false;G.voiceStatus('blocked','Microphone unavailable. Check device microphone and close apps using it.');}
+  else if(e.error!=='aborted'){recFailures=Math.min(4,recFailures+1);G.voiceStatus('retrying',e.error==='network'?'Speech connection error — reconnecting':'Reconnecting microphone…');}
+ };
+ r.onend=()=>{if(rec!==r)return;rec=null;listening=false;if(!wantListen){$('mic').classList.remove('on');if(G.voiceState.state!=='blocked')G.voiceStatus('idle','Mic off');}else if(document.hidden)G.voiceStatus('suspended','Background mic suspended — return to resume');else if(!ttsBusy)scheduleRec();};
+ try{r.start();}catch(e){rec=null;recFailures++;G.voiceStatus('retrying','Mic is busy; retrying…');scheduleRec();}
+}
+function stopRec(){clearTimeout(recTimer);const r=rec;rec=null;listening=false;if(r){try{r.abort();}catch(e){}}}
+function setListen(on){wantListen=!!on&&S.mic&&!!SR;G.micEnabled=wantListen;clearTimeout(recTimer);$('mic').classList.toggle('on',wantListen);if(!SR){G.voiceStatus('unsupported','Voice input unavailable in this browser. Try Chrome/Edge or type.');return;}if(wantListen)startRec();else{stopRec();G.voiceStatus('idle','Mic off');}}
+function toggleMic(){initAudio();if(!S.mic){S.mic=true;applyMicUI();}setListen(!wantListen);}
+function heard(t){
+ t=(t||'').trim();if(!t||ttsBusy)return;
+ const now=Date.now();if(t===lastHeard&&now-lastHeardAt<1800)return;lastHeard=t;lastHeardAt=now;
+ if(S.wake){const m=t.match(/\b(?:hey\s+)?(saras|sarus|sarah|sara)\b|सरस|सारस|سارس|سرس/i);
+  if(m){wakeUntil=now+12000;t=t.replace(m[0],'').replace(/^[,\s]+/,'').trim();if(!t){G.voiceStatus('awake','Ji, boliye — 12 seconds to give your command');return;}}
+  else if(now>wakeUntil)return;
+  wakeUntil=now+12000;
+ }
+ G.voiceStatus('thinking','Saras is thinking…',t);
+ if(busyThink){pendingText=t;return;}handle(t);
+}
+G.setListen=setListen;G.submitVoice=heard;
+document.addEventListener('visibilitychange',()=>{if(document.hidden){stopRec();if(wantListen)G.voiceStatus('suspended','Browser paused background listening — return to resume');}else if(wantListen)startRec();});
 
 /* ───────── LLM brain ───────── */
 const hist=[];let busyThink=false;
@@ -476,7 +496,7 @@ function buildSystem(){return `You are Saras, the polite, warm, slightly witty i
 
 Reply with ONLY valid JSON (no markdown):
 {"say":"...","speak":"...","speak_lang":"en-US or hi-IN","actions":[ ... ]}
-- say: 2-3 friendly, CHATTY sentences (max ~45 words) shown as subtitle: acknowledge what you are doing, then add a small observation, tip or light joke about the city / weather / drive, and now and then end with a short follow-up question. Stay polite and warm. Use the player's language (Roman Urdu if they wrote Roman Urdu / Hindi-Urdu speech, English if English).
+- Do not reuse previous acknowledgements verbatim. Vary sentence openings; react to current context. For PLAYER messages starting [COMPANION EVENT], return one fresh contextual sentence, actions [] only. When STATE assistant_mode is true answer normal questions conversationally and use game actions only for explicit in-game requests.\n- say: 2-3 friendly, CHATTY sentences (max ~45 words) shown as subtitle: acknowledge what you are doing, then add a small observation, tip or light joke about the city / weather / drive, and now and then end with a short follow-up question. Stay polite and warm. Use the player's language (Roman Urdu if they wrote Roman Urdu / Hindi-Urdu speech, English if English).
 - speak: the same sentence for text-to-speech. English reply -> English text, speak_lang "en-US". Urdu/Hindi reply -> write it in Devanagari script so a Hindi voice pronounces it well, speak_lang "hi-IN".
 - actions: executed IN ORDER. Use [] when only chatting or when you need no game action.
 
@@ -548,10 +568,10 @@ async function think(text,opt){opt=opt||{};if(S.mode==='offline')return null;con
    G.aiInfo[p]={ok:false,err:'jawab samajh nahi aaya'};}
   catch(e){console.warn('LLM '+p+' failed',e);G.lastAIError=PNAME[p]+': '+shortErr(e);toast(G.lastAIError,2800);}}
  G.setAIBadge(order.length?'⚠ Offline (AI fail)':'📴 Offline');return null;}
-async function handle(text){text=(text||'').trim();if(!text||busyThink)return;busyThink=true;G.userLang=isEn(text)?'en':'ur';say('',null,null,text);$('think').classList.add('on');
+async function handle(text){text=(text||'').trim();if(!text||busyThink)return;busyThink=true;G.aiBusy=true;G.voiceStatus&&G.voiceStatus('thinking','Saras is thinking…',text);G.userLang=isEn(text)?'en':'ur';say('',null,null,text);$('think').classList.add('on');
  let plan=null;try{plan=await think(text);}catch(e){}
  $('think').classList.remove('on');if(!plan){plan=offline(text);lastSrc='offline';}
- busyThink=false;CH.idle=0;runPlan(plan);if(pendingText){const t=pendingText;pendingText='';setTimeout(()=>handle(t),60);}}
+ busyThink=false;G.aiBusy=false;G.lastReplySource=lastSrc;CH.idle=0;if(text.startsWith('[COMPANION EVENT]'))plan.actions=[];if(G.assistantMode&&plan.actions?.length)G.resumeGameFromAssistant?.();runPlan(plan);if(!S.tts)G.voiceStatus(wantListen?'listening':'idle',wantListen?'Listening':'Mic off');if(pendingText){const t=pendingText;pendingText='';setTimeout(()=>handle(t),60);}}
 G.handle=handle;
 
 /* look: vision via Gemini, else text brain, else state */
@@ -621,7 +641,7 @@ G.event=function(key,d,imp){if(!G.started)return;if(!imp&&(!S.chatty||ttsBusy))r
  const set=L[key];if(!set)return;const en=G.userLang==='en',arr=en?set.en:set.ur;if(!arr)return;const pk=arr[Math.floor(Math.random()*arr.length)];
  let s=pk[0],sp=pk[1]||pk[0];if(d){const nm=d.name||'',hi=d.hi||nm;s=s.replace('{name}',nm);sp=sp.replace('{name}',nm).replace('{hi}',hi);}
  CH.last=now;CH.idle=0;say(s,sp,en?'en-US':'hi-IN');};
-function chatUpdate(dt){if(!G.started)return;if(ttsBusy&&performance.now()-ttsT>25000){ttsBusy=false;if(wantListen)startRec();}
+function chatUpdate(dt){if(!G.started)return;if(ttsBusy&&performance.now()-ttsT>60000){ttsBusy=false;if(wantListen)startRec();}
  CH.warm-=dt;CH.idle+=dt;const mi=G.lastInp;if(mi&&G.mode==='car'&&(Math.abs(mi.thr)>.1||Math.abs(mi.steer)>.1)&&!AP.cur)CH.idle=Math.max(0,CH.idle-dt*.7);if(CH.warm>0)return;
  if(W.type!==CH.prevW){CH.prevW=W.type;if(L[W.type])G.event(W.type);}
  const n=G.night>.6;if(n!==CH.prevN){CH.prevN=n;G.event(n?'night':'morning');}
@@ -647,7 +667,7 @@ function update(dt){
  applyCam(dt);skyUpdate(dt);rainUpdate(dt);hud(dt);chatUpdate(dt);if(G.uiOn&&(Q>0||((G.miniN=(G.miniN||0)+1)&1)===0))drawMini();
  cityGroup.visible=!G.indoor;beaconGroup.visible=!G.indoor;sky.visible=!G.indoor;scene.background=G.indoor?bgIndoor:null;}
 let last=performance.now();
-function frame(now){requestAnimationFrame(frame);const dt=Math.max(0,Math.min(.05,(now-last)/1000));last=now;try{if(!G.paused)update(dt);}catch(e){console.error(e);}
+function frame(now){requestAnimationFrame(frame);if(document.hidden){last=now;return;}if(now-last<33)return;const dt=Math.max(0,Math.min(.05,(now-last)/1000));last=now;if(!G.started||G.paused||['settings','bigmap','mlist'].some(id=>$(id)?.classList.contains('on'))){if(!G.staticRendered){renderer.render(scene,camera);G.staticRendered=true;}return;}G.staticRendered=false;try{update(dt);}catch(e){console.error(e);}
  renderer.render(scene,camera);
  if(G.shotReq){try{const c=document.createElement('canvas');c.width=512;c.height=Math.round(512*canvas.height/canvas.width)||288;c.getContext('2d').drawImage(canvas,0,0,c.width,c.height);const r=G.shotReq;G.shotReq=null;r(c.toDataURL('image/jpeg',.6));}catch(e){const r=G.shotReq;G.shotReq=null;r&&r(null);}}}
 

@@ -1,51 +1,84 @@
-/* Original Saras City campaign and a lightweight journal. No network required. */
-(function () {
-  'use strict';
-  const G = window.G;
-  if (!G || !G.missions) return;
-  const chapters = [
-    ['Naya shehar, nayi umeed', 'Saras apne mohally mein delivery ka chhota kaam shuru karti hai. Pehli kamai se ghar ki workshop dobara kholni hai.'],
-    ['Shehar ki dharkan', 'Bazaar, hospital aur cricket ground ke safar mein Saras ko shehar ke logon ka bharosa milta hai.'],
-    ['Apna raasta', 'Ab apni workshop ke liye aakhri deliveries aur shehar bhar ke doston ko aik saath lana hai.']
-  ];
-  const names = {
-    m1: ['Pehli kamai', 'Workshop ka generator band hai. Petrol Pump se fuel laane ke liye apni gaari mein niklo.'],
-    m2: ['Amanat', 'Sadar Bazaar ke dukandaar ne hospital ka zaroori parcel diya hai. Use waqt par pahunchao.'],
-    m3: ['Naya bharosa', 'Plaza par cricket coach intezar kar raha hai. Use ground tak chhoro; isi se tumhara naya kaam chalega.'],
-    m4: ['Shehar ka challenge', 'Cricket club ne workshop fund ke liye checkpoint race rakhi hai. Raaste yaad karo aur waqt par finish karo.']
-  };
-  G.missions.forEach(d => { if (names[d.id]) [d.title, d.intro] = names[d.id]; });
-  const extra = [
-    ['sc_supply', 'Workshop ka samaan', 'bazaar', 'Bazaar se spare parts lekar Petrol Pump wale mechanic ko do.', ['bazaar','petrol'], 1100, 230],
-    ['sc_care', 'Mohally ka saath', 'hospital', 'Hospital se dawa ka parcel ghar tak pahunchao. Phir Jinnah Park par volunteer se milo.', ['hospital','home','park'], 1300, 300],
-    ['sc_team', 'Match ka din', 'stadium', 'Plaza se team ka samaan lo aur Cricket Ground tak le aao.', ['mall','stadium'], 1500, 220],
-    ['sc_home', 'Roshan workshop', 'home', 'Aakhri spare parts Petrol Pump se uthao. Ghar wapas jaa kar apni workshop ka naya safar shuru karo.', ['petrol','home'], 2500, 300]
-  ];
-  extra.forEach(([id,title,giver,intro,stops,money,time]) => G.missions.push({id,title,giver,intro,time,steps:stops.map((lm,i)=>({type:'goto',lm,veh:'any',text:(i===stops.length-1?'Delivery: ':'Samaan uthao: ')+(G.landmarks.find(l=>l.id===lm)||{}).name})),reward:{money,xp:160}}));
-  const style = document.createElement('style');
-  style.textContent = '#start .card{max-width:620px;border:1px solid #bc9a55;background:linear-gradient(145deg,#092a29f5,#0b131cf5);box-shadow:0 25px 100px #0009}#start h1{font-size:clamp(30px,7vw,54px);letter-spacing:3px}#start .tag{color:#eac47b}#cityJournalButton{position:fixed;left:12px;top:100px;z-index:12;padding:9px 12px;background:#092a29eb;color:#f7d995;border:1px solid #c8ae65;border-radius:12px}#cityJournal{position:fixed;inset:0;z-index:70;background:#030b11d9;display:grid;place-items:center;padding:18px}#cityJournal[hidden]{display:none}#cityJournal article{width:min(660px,100%);max-height:88dvh;overflow:auto;box-sizing:border-box;background:#101e24;color:#e8eeec;border:1px solid #426459;border-radius:20px;padding:24px;font:15px/1.6 system-ui}#cityJournal h1{color:#f0cd84;font-size:30px;margin:4px 0}#cityJournal button{padding:10px 15px;margin:5px;border:1px solid #7a987f;border-radius:9px;background:#183f35;color:#fff;font:inherit;cursor:pointer}#cityJournal progress{width:100%;accent-color:#e4bc6e}#cityJournal .mission{border-top:1px solid #ffffff20;padding:12px 0}#cityJournal small{color:#a7c2b9}#cityOffline{color:#e4bc6e} @media(max-height:500px){#cityJournal article{max-height:94dvh;padding:15px}#cityJournalButton{top:75px;font-size:11px}}';
-  document.head.appendChild(style);
-  const button = document.createElement('button'); button.id='cityJournalButton';button.textContent='STORY / HELP';button.type='button';document.body.appendChild(button);
-  const panel = document.createElement('section');panel.id='cityJournal';panel.hidden=true;panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true');panel.setAttribute('aria-label','Story journal');document.body.appendChild(panel);
-  let lastFocus;
-  function open() {
-    lastFocus=document.activeElement; G.paused=true; panel.hidden=false;
-    const index=Math.min(G.save.mi,G.missions.length), done=index>=G.missions.length;
-    const chapter=chapters[Math.min(2,Math.floor(index/Math.max(1,G.missions.length/3)))];
-    panel.innerHTML='<article><button id="cityClose" style="float:right" aria-label="Close journal">Close ×</button><small>SARAS CITY · PAKISTAN · CAMPAIGN 01</small><h1>'+chapter[0]+'</h1><p>'+chapter[1]+'</p><progress value="'+index+'" max="'+G.missions.length+'"></progress><small>'+index+' / '+G.missions.length+' missions complete · Rs '+G.save.money+'</small><div id="cityMission"></div><h3>Controls</h3><p>PC: WASD / arrows · Shift run · E interact / vehicle · M map · T type · V microphone. Mobile: left joystick to walk, right side drag to look, door button for vehicles. Follow the mission marker on the map.</p><h3>Offline & voice</h3><p>Story, traffic aur driving offline chalti hain jab game download complete ho. AI ko internet aur Settings mein apni API key chahiye. Microphone recognition browser ke mutabiq internet maang sakti hai. Online natural voice ke liye Settings mein Gemini key aur voice routing use karo. Offline mein device voice available hai.</p><p id="cityOffline">Offline package check karne ke liye download dabao.</p><button id="cityDownload">Download for offline</button><button id="cityFullscreen">Fullscreen</button><p><small>Original browser game prototype. Progress isi browser mein save hoti hai.</small></p></article>';
-    const area=panel.querySelector('#cityMission'), active=G.M.active, d=active||G.missions[index];
-    if(done&&!active)area.innerHTML='<h3>Workshop roshan ho gayi!</h3><p>Campaign complete. Ab shehar explore karo aur free roam enjoy karo.</p>';
-    else if(d){const title=document.createElement('h2');title.textContent=d.title;area.appendChild(title);const p=document.createElement('p');p.textContent=d.intro;area.appendChild(p);const b=document.createElement('button');b.textContent=active?'Continue mission':'Start next mission';b.onclick=()=>{close();if(!G.started)G.$('bGo').click();if(!active)G.startMission(d);};area.appendChild(b);if(active){const p=document.createElement('p');p.textContent='Current: '+((d.steps[G.M.step]||{}).text||'Follow the marker');area.appendChild(p);}}
-    panel.querySelector('#cityClose').onclick=close;
-    panel.querySelector('#cityFullscreen').onclick=async()=>{try{await document.documentElement.requestFullscreen();if(screen.orientation?.lock)await screen.orientation.lock('landscape');}catch(e){G.toast('Browser menu se fullscreen / install use karo.');}};
-    panel.querySelector('#cityDownload').onclick=async()=>{const status=panel.querySelector('#cityOffline');if(!('serviceWorker' in navigator)){status.textContent='Is browser mein offline install available nahi.';return;}status.textContent='Downloading game files…';try{const reg=await Promise.race([navigator.serviceWorker.ready,new Promise((_,reject)=>setTimeout(()=>reject(Error('timeout')),20000))]);const worker=reg.active;const channel=new MessageChannel();channel.port1.onmessage=e=>{status.textContent=e.data.ok?'Offline ready. Ab airplane mode mein game dobara khol sakte ho.':'Download incomplete: '+e.data.error;};worker.postMessage({type:'DOWNLOAD_OFFLINE'},[channel.port2]);}catch(e){status.textContent='Download failed. Internet connect karke retry karo.';}};
-    panel.querySelector('#cityClose').focus();
-  }
-  function close(){G.paused=false;panel.hidden=true;lastFocus?.focus();}
-  button.onclick=open;
-  window.addEventListener('keydown',e=>{if(e.key.toLowerCase()!=='e'||G.paused||['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName))return;if(G.indoor)G.actions.exit_home({});else if(G.mode==='car')G.exitCar();else G.enterCar();});
-  panel.addEventListener('keydown',e=>{if(e.key==='Escape')close();if(e.key==='Tab'){const els=[...panel.querySelectorAll('button')];if(e.shiftKey&&document.activeElement===els[0]){e.preventDefault();els.at(-1).focus();}else if(!e.shiftKey&&document.activeElement===els.at(-1)){e.preventDefault();els[0].focus();}}});
-  // Stop held touch inputs when the browser interrupts a gesture.
-  window.addEventListener('blur',()=>{Object.keys(G.keys).forEach(k=>G.keys[k]=false);});
-  G.hooks.ready.push(()=>{const start=G.$('start');const title=start.querySelector('h1');if(title)title.textContent='SARAS CITY';const tag=start.querySelector('.tag');if(tag)tag.textContent='Apna shehar. Apni kahani.';const b=document.createElement('button');b.className='btn';b.textContent='Story, controls & offline';b.onclick=open;start.querySelector('.card').appendChild(b);G.$('stagetag').textContent='Saras City · Campaign 01';});
+/* Saras City: Andheray ke Paar. Original 24-mission campaign. */
+(function(){
+'use strict';
+const G=window.G,C=window.SarasCampaign;if(!G||!C||!G.missions)return;
+if(G.save.campaignVersion!==C.version){
+ try{localStorage.setItem('saras_campaign_v1_backup',JSON.stringify(G.save));}catch(e){}
+ G.save.mi=0;G.save.campaignVersion=C.version;G.saveGame();
+}
+G.save.mi=Math.max(0,Math.min(C.missions.length,Number(G.save.mi)||0));
+const lm=id=>G.landmarks.find(l=>l.id===id);
+let introTimer=0;
+G.missions.splice(0,G.missions.length,...C.missions);
+G.stepTypes.intel={
+ start(s,st){s.target=lm(st.lm).stop;s.elapsed=0;s.last=null;s.bc=G.beacon(s.target.x,s.target.z,'#56e8c8',90,1.8);s.mk={id:'obj',...s.target,color:'#56e8c8',big:1};G.markers.push(s.mk);},
+ update(s,st,dt){const p=G.focusPos(),near=Math.hypot(p.x-s.target.x,p.z-s.target.z)<9,moved=s.last?Math.hypot(p.x-s.last.x,p.z-s.last.z)>dt*1.5:false;s.last={x:p.x,z:p.z};if(near&&G.mode==='foot'&&!moved)s.elapsed+=dt;else s.elapsed=Math.max(0,s.elapsed-dt);return s.elapsed>=st.seconds?'done':null;},
+ end(s){s.bc?.parent?.remove(s.bc);const i=G.markers.indexOf(s.mk);if(i>=0)G.markers.splice(i,1);}
+};
+const style=document.createElement('link');style.rel='stylesheet';style.href='premium.css';document.head.appendChild(style);
+const journal=document.createElement('section');journal.id='cityJournal';journal.hidden=true;journal.setAttribute('role','dialog');journal.setAttribute('aria-modal','true');journal.setAttribute('aria-label','Mission journal');document.body.appendChild(journal);
+const toolbar=document.createElement('nav');toolbar.id='premiumToolbar';toolbar.setAttribute('aria-label','Game tools');toolbar.innerHTML='<button id="storyOpen">STORY · 24</button><button id="cameraCycle">CAM · FOLLOW</button><button id="assistantOpen">SARAS AI</button>';document.body.appendChild(toolbar);
+const intro=document.createElement('aside');intro.id='missionIntro';intro.setAttribute('aria-live','polite');document.body.appendChild(intro);
+const objective=document.createElement('div');objective.id='premiumObjective';document.body.appendChild(objective);
+G.missions.forEach((d,i)=>{
+ d.onStart=()=>{
+  G.me.hp=Math.max(80,G.me.hp);G.car.hp=Math.max(65,G.car.hp);
+  G.setWeather(d.weather,600);G.time=d.night?21.5:8.5;G.staticRendered=false;
+  if(d.steps.some(s=>s.type==='evade'))G.setWanted(2);else G.setWanted(0);
+  intro.replaceChildren();const small=document.createElement('small'),h=document.createElement('h2'),p=document.createElement('p');
+  small.textContent=C.chapters[d.chapter]+' · MISSION '+String(i+1).padStart(2,'0')+(G.M.replay?' · REPLAY':'');
+  h.textContent=d.title;p.textContent=d.intro;intro.append(small,h,p);intro.classList.add('on');clearTimeout(introTimer);introTimer=setTimeout(()=>intro.classList.remove('on'),5200);
+ };
+ d.onEnd=ok=>{G.setWanted(0);intro.classList.remove('on');if(ok&&i===23)G.toast('ANDHERAY KE PAAR · Campaign complete! Free roam aur replay unlocked.',6000);};
+ d.extraHud=()=>{const st=d.steps[G.M.step],s=G.M.s;if(st?.type==='intel')return '<small>On foot, marker ke paas ruk kar inspect karo · '+Math.min(100,Math.round((s?.elapsed||0)/st.seconds*100))+'%</small>';if(st?.type==='kill')return '<small>Attackers: '+(s?.alive??'…')+' · F / Attack</small>';return '';};
+});
+let previousFocus,previousPause=false;
+function close(){journal.hidden=true;G.paused=previousPause;G.staticRendered=false;previousFocus?.focus();}
+function start(d){if(G.M.active){G.toast('Active mission pehle finish ya cancel karo.');return;}close();if(!G.started)G.$('bGo').click();G.startMission(d);}
+function open(){
+ previousFocus=document.activeElement;previousPause=!!G.paused;G.paused=true;journal.hidden=false;
+ journal.innerHTML='<article><button id="journalClose" class="close" aria-label="Close missions">×</button><small>ORIGINAL PAKISTANI OPEN WORLD · CAMPAIGN 02</small><h1>Andheray ke Paar</h1><p>24 missions. Aik shehar. Har suraagh tumhein sach ke qareeb le jata hai.</p><progress id="campaignProgress" max="24"></progress><p id="campaignCount"></p><div id="currentMission"></div><div class="journalActions"><button id="offlineDownload">Download offline</button><button id="fullScreen">Fullscreen</button><button id="settingsOpen">Settings / Voice</button></div><p id="offlineStatus" role="status"></p><details><summary>Controls & help</summary><p>WASD / arrows: move · E: vehicle / house · F: attack · Q: weapon · M: map · T: type · V: mic · B: camera. Phone: left joystick, right side camera drag, on-screen action buttons. Intel missions: marker ke paas on foot ruk kar progress complete karo. Completed missions replay ho sakte hain; future missions locked hain.</p><p>Progress isi browser mein save hoti hai. New campaign ke liye old progress ka local backup rakha gaya hai. Offline play pehle download complete hone ke baad available hai.</p></details><div id="campaignRows"></div></article>';
+ journal.querySelector('#campaignProgress').value=G.save.mi;journal.querySelector('#campaignCount').textContent=G.save.mi+'/24 complete · Rs '+G.save.money;
+ const active=G.M.active,current=journal.querySelector('#currentMission');
+ if(active){const p=document.createElement('p');p.textContent='ACTIVE: '+active.title+' · '+(active.steps[G.M.step]?.text||'');current.appendChild(p);const b=document.createElement('button');b.textContent='Cancel active mission';b.onclick=()=>{G.finishMission(false,'cancel kiya');close();};current.appendChild(b);}
+ const list=journal.querySelector('#campaignRows');
+ C.chapters.forEach((chapter,n)=>{const h=document.createElement('h3');h.textContent=chapter;list.appendChild(h);
+ G.missions.forEach((d,i)=>{if(d.chapter!==n)return;const row=document.createElement('div');row.className='campaignRow'+(i>G.save.mi?' locked':'');const label=document.createElement('div'),strong=document.createElement('strong'),small=document.createElement('small');strong.textContent=String(i+1).padStart(2,'0')+' · '+d.title;small.textContent=i>G.save.mi?'Locked — previous mission complete karo':d.intro;label.append(strong,small);const b=document.createElement('button');b.disabled=i>G.save.mi||!!active;b.textContent=i<G.save.mi?'Replay':i===G.save.mi?'Start':'Locked';b.onclick=()=>start(d);row.append(label,b);list.appendChild(row);});});
+ journal.querySelector('#journalClose').onclick=close;
+ journal.querySelector('#fullScreen').onclick=async()=>{try{await document.documentElement.requestFullscreen();await screen.orientation?.lock?.('landscape');}catch(e){G.toast('Browser install/menu se fullscreen use karo.');}};
+ journal.querySelector('#settingsOpen').onclick=()=>{close();G.$('bSet').click();};
+ journal.querySelector('#offlineDownload').onclick=async()=>{
+ const status=journal.querySelector('#offlineStatus');status.textContent='Downloading complete game package…';
+ try{if(!navigator.serviceWorker)throw Error('unsupported');const reg=await Promise.race([navigator.serviceWorker.ready,new Promise((_,reject)=>setTimeout(()=>reject(Error('timeout')),18000))]);const ch=new MessageChannel();const timeout=setTimeout(()=>status.textContent='Download not confirmed — internet connect karke retry karo.',30000);ch.port1.onmessage=e=>{clearTimeout(timeout);status.textContent=e.data.ok?'Offline ready. Airplane mode mein reopen karke check karo.':'Download incomplete. Internet/storage check karo.';ch.port1.close();};reg.active.postMessage({type:'DOWNLOAD_OFFLINE'},[ch.port2]);}catch(e){status.textContent='Offline package unavailable. HTTPS aur internet connection check karo.';}};
+ journal.querySelector('#journalClose').focus();
+}
+journal.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();close();}if(e.key==='Tab'){const items=[...journal.querySelectorAll('button:not(:disabled),summary')];if(e.shiftKey&&document.activeElement===items[0]){e.preventDefault();items.at(-1).focus();}else if(!e.shiftKey&&document.activeElement===items.at(-1)){e.preventDefault();items[0].focus();}}});
+G.openJournal=open;toolbar.querySelector('#storyOpen').onclick=open;
+let cameraMode=0;const modes=['FOLLOW','HOOD','TACTICAL','CINEMATIC'];
+const baseCamera=G.camHook,target=new G.T.Vector3(),aim=new G.T.Vector3();
+function cycle(){cameraMode=(cameraMode+1)%modes.length;toolbar.querySelector('#cameraCycle').textContent='CAM · '+modes[cameraMode];G.staticRendered=false;G.toast('Camera: '+modes[cameraMode],1200);}
+G.cyclePremiumCamera=cycle;toolbar.querySelector('#cameraCycle').onclick=cycle;
+G.camHook=function(dt){
+ if(!cameraMode||G.indoor||G.mode==='foot'&&cameraMode===1)return baseCamera?baseCamera(dt):false;
+ const p=G.focusPos(),h=G.focusH(),fx=Math.sin(h),fz=Math.cos(h),rx=Math.cos(h),rz=-Math.sin(h);
+ if(cameraMode===1){target.set(p.x+fx*2.5,1.65,p.z+fz*2.5);aim.set(p.x+fx*18,1.5,p.z+fz*18);}
+ else if(cameraMode===2){target.set(p.x-fx*9,13,p.z-fz*9);aim.set(p.x+fx*2,0,p.z+fz*2);}
+ else{target.set(p.x-fx*7+rx*4.5,3.6,p.z-fz*7+rz*4.5);aim.set(p.x+fx*4,1.1,p.z+fz*4);}
+ const blocked=G.colliders.some(b=>target.x>b.x0&&target.x<b.x1&&target.z>b.z0&&target.z<b.z1);
+ if(blocked)return baseCamera?baseCamera(dt):false;
+ G.camState.pos.lerp(target,1-Math.exp(-dt*8));G.camera.position.copy(G.camState.pos);G.camera.lookAt(aim);G.camState.fov=cameraMode===1?78:cameraMode===2?60:65;return true;
+};
+G.actions.premium_camera=()=>{cycle();return {update:()=>true};};
+G.promptExtras.push('{"a":"premium_camera"} switches the cinematic game camera. Missions must be started in order. Completed missions can be replayed; future missions are locked.');
+G.stateExtras.push(()=>({assistant_mode:!!G.assistantMode,campaign:C.title,mission_completed:G.save.mi,mission_total:24,camera:modes[cameraMode]}));
+window.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName))return;if(e.key.toLowerCase()==='b')cycle();if(e.key.toLowerCase()==='e'&&!G.paused){if(G.indoor)G.actions.exit_home({});else if(G.mode==='car')G.exitCar();else G.enterCar();}});
+let hudTime=0;
+G.hooks.update.push(dt=>{hudTime-=dt;if(hudTime>0)return;hudTime=.3;const d=G.M.active;objective.hidden=!d;if(d){objective.replaceChildren();const s=document.createElement('small'),p=document.createElement('strong');s.textContent=(G.M.replay?'REPLAY':'MISSION '+(G.missions.indexOf(d)+1))+' · '+d.title;p.textContent=d.steps[G.M.step]?.text||'';objective.append(s,p);}});
+G.hooks.ready.push(()=>{
+ G.$('bMis').addEventListener('click',()=>{G.$('mlist').classList.remove('on');open();});
+ const startPanel=G.$('start');startPanel.querySelector('h1').textContent='SARAS CITY';G.$('stagetag').textContent='ANDHERAY KE PAAR · 24 STORY MISSIONS';
+ const b=document.createElement('button');b.className='btn';b.textContent='Campaign / Replay / Offline';b.onclick=open;startPanel.querySelector('.card').appendChild(b);
+ const ab=document.createElement('button');ab.className='btn';ab.textContent='Saras Assistant';ab.onclick=()=>G.openAssistant?.();startPanel.querySelector('.card').appendChild(ab);
+ G.$('bGo').addEventListener('click',()=>{G.staticRendered=false;});
+});
 })();

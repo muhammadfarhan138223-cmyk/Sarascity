@@ -1,0 +1,32 @@
+
+:root{--pk-mint:#6ce2c3;--pk-gold:#dfba78}
+#start .card{background:linear-gradient(140deg,#092d2af5,#0c1421f8);border:1px solid #9c8458;border-radius:22px;box-shadow:0 30px 120px #000a;max-width:650px}
+#start h1{font-size:clamp(32px,7vw,58px);letter-spacing:4px}#start .tag{color:var(--pk-gold)}
+#premiumToolbar{position:fixed;top:85px;left:12px;z-index:14;display:flex;gap:5px}
+#premiumToolbar button,#cityJournal button,#sarasAssistant button{font:600 12px system-ui;color:#e7f0ec;background:#102c2be8;border:1px solid #526b59;border-radius:10px;padding:10px 13px;cursor:pointer}
+#premiumToolbar button:hover,#cityJournal button:hover{background:#285145}#cityJournal button:disabled{opacity:.45;cursor:not-allowed}
+#cityJournal{position:fixed;inset:0;z-index:75;background:#02070cdb;display:grid;place-items:center;padding:18px}
+#cityJournal[hidden]{display:none}#cityJournal article{box-sizing:border-box;width:min(860px,100%);max-height:90dvh;overflow:auto;padding:28px;background:linear-gradient(150deg,#142c2c,#111a25);border:1px solid #547365;border-radius:22px;color:#e8f2ed;font:14px/1.6 system-ui;box-shadow:0 25px 100px #0009}
+#cityJournal h1{font-size:clamp(28px,5vw,42px);margin:8px 0;color:#f0d49d}#cityJournal h3{color:#6ce2c3;letter-spacing:1px;font-size:13px;margin-top:30px}
+#cityJournal small{color:#a3c0b6}#cityJournal .close{float:right;font-size:23px;padding:2px 12px}#cityJournal progress{width:100%;height:8px;accent-color:#dfba78}
+.campaignRow{display:flex;gap:15px;align-items:center;justify-content:space-between;padding:15px 0;border-bottom:1px solid #ffffff16}.campaignRow small,.campaignRow strong{display:block}.campaignRow small{margin-top:5px}.campaignRow button{min-width:70px}.campaignRow.locked{opacity:.6}.journalActions{display:flex;gap:6px;flex-wrap:wrap}
+#missionIntro{position:fixed;bottom:20%;left:8%;z-index:19;max-width:min(650px,80%);padding:22px 28px;background:linear-gradient(90deg,#04130cf0,#04130c55);border-left:3px solid #dfba78;color:white;pointer-events:none;opacity:0;transform:translateY(15px);transition:opacity .5s,transform .5s}
+#missionIntro.on{opacity:1;transform:none}#missionIntro h2{font:700 clamp(24px,5vw,48px) system-ui;margin:8px 0}#missionIntro small{color:#e6c58b;letter-spacing:2px}#missionIntro p{font:15px/1.6 system-ui}
+#premiumObjective{position:fixed;top:130px;left:12px;z-index:12;max-width:min(320px,45vw);background:#07171ecf;border-left:2px solid #6ce2c3;padding:10px 13px;color:#fff;pointer-events:none;font:12px/1.4 system-ui}#premiumObjective[hidden]{display:none}#premiumObjective small,#premiumObjective strong{display:block}#premiumObjective small{color:#dfba78;margin-bottom:5px}
+#sarasAssistant{position:fixed;inset:0;z-index:65;background:radial-gradient(ellipse at 50% 85%,#153b42,#050c16 70%);color:#eaf4f0;font-family:system-ui;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box}
+#sarasAssistant[hidden]{display:none}#sarasAssistant .assistantCard{width:min(700px,100%);text-align:center}#sarasAssistant h1{font-size:clamp(30px,6vw,50px);margin:10px 0}#sarasAssistant p{line-height:1.6;color:#a6c4c1}#sarasAssistant input,#sarasAssistant select{background:#10242f;color:#f3faf6;border:1px solid #45686b;border-radius:10px;padding:12px;font:14px system-ui;box-sizing:border-box}#sarasAssistant input{flex:1;min-width:0}.assistantForm{display:flex;gap:8px;margin-top:20px}.assistantControls{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}.voiceOrb{width:108px;height:108px;border-radius:50%;margin:15px auto 24px;background:radial-gradient(circle at 30% 30%,#a9f5dd,#24899a 40%,#153754 70%);box-shadow:0 0 45px #5be4cc40;transition:transform .3s}
+#sarasGlow{position:fixed;inset:3px;border:2px solid transparent;border-radius:20px;pointer-events:none;z-index:90;transition:box-shadow .3s,border-color .3s}
+body[data-saras-state="listening"] #sarasGlow{border-color:#6ce2c360;box-shadow:inset 0 0 24px #4fc9b829}
+body[data-saras-state="thinking"] #sarasGlow{border-color:#dfba7880;animation:sarasThink 1.4s infinite}
+body[data-saras-state="speaking"] #sarasGlow{border-color:#74d9fb;animation:sarasSpeak 1.2s infinite alternate}
+body[data-saras-state="speaking"] .voiceOrb{animation:orbPulse .8s infinite alternate}
+body[data-saras-state="listening"] .voiceOrb{animation:orbPulse 2s infinite alternate}
+#sarasStatus{min-height:24px;color:#7ee8d0!important;font-size:14px}#sarasTranscript{max-height:20dvh;overflow:auto;font:500 clamp(16px,3vw,23px)/1.5 system-ui;color:#f6fbff;min-height:65px;margin:20px auto}
+#sarasTranscript.fresh{animation:transcriptIn .45s ease-out}#sarasAssistant .caption{font-size:12px;max-width:590px;margin:14px auto}
+@keyframes sarasSpeak{from{box-shadow:inset 0 0 22px #50bee34d,0 0 12px #50bee3}to{box-shadow:inset 0 0 55px #87f5d959,0 0 24px #87f5d9}}
+@keyframes sarasThink{50%{box-shadow:inset 0 0 35px #dfba7840}}
+@keyframes orbPulse{to{transform:scale(1.07);filter:brightness(1.18)}}
+@keyframes transcriptIn{from{opacity:.2;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media(max-width:600px){#premiumToolbar{top:76px}#premiumToolbar button{padding:8px;font-size:10px}#premiumObjective{top:115px;font-size:10px;max-width:40vw}#cityJournal article{padding:18px}.campaignRow{gap:8px}#missionIntro{bottom:30%;padding:14px 18px}#missionIntro p{font-size:12px}}
+@media(max-height:500px){#sarasAssistant .voiceOrb{width:55px;height:55px;margin:0 auto 10px}#sarasAssistant h1{font-size:25px;margin:5px}#sarasTranscript{margin:5px;min-height:30px;font-size:16px}#sarasAssistant .caption{margin:6px auto;font-size:10px}.assistantForm{margin-top:8px}#cityJournal article{max-height:95dvh}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}

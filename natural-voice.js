@@ -21,7 +21,7 @@
       }
       if(id!==sequence)return true;
       source=context.createBufferSource();source.buffer=buffer;source.connect(context.destination);
-      await new Promise(resolve=>{source.onended=resolve;source.start();});return true;
+      await new Promise(resolve=>{source.onended=resolve;G.voiceStatus&&G.voiceStatus('speaking','Saras is speaking');source.start();});return true;
     }catch(e){return id!==sequence;} // Stale requests must not speak a device fallback.
   };
   G.hooks.ready.push(()=>{

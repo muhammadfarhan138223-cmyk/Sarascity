@@ -1,6 +1,6 @@
 /* Complete offline package. API traffic is never cached. */
-const VERSION='saras-campaign-1-v1';
-const CORE=['./','index.html','core.js','stage2.js','stage3.js','stage4.js','stage5.js','stage6.js','pakistan.js','gameplay.js','pakistan2.js','city-story.js','natural-voice.js','models.json','manifest.json','icon.svg','icon-192.png','icon-512.png',
+const VERSION='saras-campaign-2-v1';
+const CORE=['./','index.html','core.js','stage2.js','stage3.js','stage4.js','stage5.js','stage6.js','pakistan.js','gameplay.js','pakistan2.js','campaign-data.js','city-story.js','premium.css','assistant-mode.js','natural-voice.js','models.json','manifest.json','icon.svg','icon-192.png','icon-512.png',
 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js',
 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/BufferGeometryUtils.js'];
